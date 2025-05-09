@@ -1,0 +1,163 @@
+//! This module provides functionality for parsing and handling partition tables
+//! and Master Boot Records (MBR) in the FAT32 file system.
+//!
+//! It defines structures and methods to interpret partition table entries,
+//! validate partition tables, and extract relevant metadata from disk images.
+
+use std::fs::File;
+use std::vec;
+
+use crate::constants;
+use crate::utils;
+
+/// Represents the type of a partition table entry.
+#[derive(Debug)]
+enum PTType {
+    /// Logical Block Addressing (LBA) FAT32 partition type.
+    LBAFat32,
+    /// Unsupported partition type, encapsulating the raw type byte.
+    Unsupported(u8),
+}
+
+impl PTType {
+    /// Creates a `PTType` instance from a raw byte.
+    ///
+    /// # Parameters
+    /// - `byte`: A single byte representing the partition type.
+    ///
+    /// # Returns
+    /// - `PTType::LBAFat32` if the byte matches the FAT32 LBA type (0x0C).
+    /// - `PTType::Unsupported(byte)` for any other value.
+    fn from_byte(byte: u8) -> Self {
+        match byte {
+            0x0C => PTType::LBAFat32,
+            _ => PTType::Unsupported(byte),
+        }
+    }
+}
+
+/// Represents a single partition table entry.
+#[derive(Debug)]
+pub struct PTEntry {
+    /// The type of the partition.
+    pt_type: PTType,
+    /// The starting Logical Block Address (LBA) of the partition.
+    lba_start: u32,
+    /// The number of sectors in the partition.
+    sector_cnt: u32,
+}
+
+impl PTEntry {
+    /// Returns the starting Logical Block Address (LBA) of the partition.
+    pub fn get_lba_start(&self) -> u32 {
+        self.lba_start
+    }
+
+    /// Returns the number of sectors in the partition.
+    pub fn get_sector_cnt(&self) -> u32 {
+        self.sector_cnt
+    }
+}
+
+/// Represents the boot signature of a Master Boot Record (MBR).
+#[derive(Debug)]
+enum BootSignature {
+    /// Standard MBR boot signature (0x55AA).
+    MBR,
+    /// Unsupported boot signature, encapsulating the raw value.
+    Unsupported(u16),
+}
+
+impl BootSignature {
+    /// Creates a `BootSignature` instance from a `u16` value.
+    ///
+    /// # Parameters
+    /// - `sig`: A 16-bit unsigned integer representing the boot signature.
+    ///
+    /// # Returns
+    /// - `BootSignature::MBR` if the signature matches `0x55AA`.
+    /// - `BootSignature::Unsupported(other)` for any other value.
+    pub fn from_u16(sig: u16) -> BootSignature {
+        match sig {
+            0x55AA => BootSignature::MBR,
+            other => BootSignature::Unsupported(other),
+        }
+    }
+}
+
+/// Represents a Master Boot Record (MBR), including partition table entries
+/// and the boot signature.
+#[derive(Debug)]
+pub struct MBR {
+    /// The partition table entries in the MBR.
+    pt_entries: [PTEntry; constants::PART_CNT],
+    /// The boot signature of the MBR.
+    boot_signature: BootSignature,
+}
+
+impl MBR {
+    /// Reads and parses an MBR from a file.
+    ///
+    /// # Parameters
+    /// - `file`: A mutable reference to a `File` object representing the disk image.
+    ///
+    /// # Returns
+    /// - `Ok(MBR)` if the MBR is successfully parsed.
+    /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
+    pub fn from_file(file: &mut File) -> std::io::Result<MBR> {
+        let mut buffer = vec![0; constants::SECTOR_SIZE];
+        utils::read_sector(file, 0, &mut buffer)?;
+
+        let pt_entries: [PTEntry; constants::PART_CNT] = core::array::from_fn(|i| {
+            let offset = 446 + i * 16;
+            PTEntry {
+                pt_type: PTType::from_byte(utils::u8_at(&buffer, offset + 0x04)),
+                lba_start: utils::u32_at(&buffer, offset + 0x08),
+                sector_cnt: utils::u32_at(&buffer, offset + 0x0C),
+            }
+        });
+
+        Ok(MBR {
+            pt_entries: pt_entries,
+            boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
+        })
+    }
+
+    /// Returns a reference to the partition table entries.
+    pub fn get_pt_entries(&self) -> &[PTEntry; constants::PART_CNT] {
+        &self.pt_entries
+    }
+
+    /// Checks if the MBR is supported.
+    ///
+    /// # Returns
+    /// - `true` if the partition table is sorted, non-overlapping, and the boot signature is valid.
+    /// - `false` otherwise.
+    pub fn is_supported(&self) -> bool {
+        self.is_partition_table_sorted()
+            && !self.is_partition_table_overlapping()
+            && !matches!(self.boot_signature, BootSignature::Unsupported(_))
+    }
+
+    /// Checks if the partition table entries are sorted by their starting LBA.
+    ///
+    /// # Returns
+    /// - `true` if the entries are sorted.
+    /// - `false` otherwise.
+    fn is_partition_table_sorted(&self) -> bool {
+        self.pt_entries
+            .windows(2)
+            .all(|pair| pair[0].lba_start <= pair[1].lba_start)
+    }
+
+    /// Checks if the partition table entries are overlapping.
+    ///
+    /// # Returns
+    /// - `true` if any entries overlap.
+    /// - `false` otherwise.
+    fn is_partition_table_overlapping(&self) -> bool {
+        self.pt_entries
+            .windows(2)
+            .any(|pair| pair[0].lba_start + pair[0].sector_cnt > pair[1].lba_start)
+    }
+}
