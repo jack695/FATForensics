@@ -24,3 +24,6 @@ jobs:
 
       - name: Run Clippy
         run: cargo clippy -- -D warnings
+
+      - name: Check documentation
+        run: cargo doc --no-deps --document-private-items
