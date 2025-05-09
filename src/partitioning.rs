@@ -3,11 +3,13 @@
 //!
 //! It defines structures and methods to interpret partition table entries,
 //! validate partition tables, and extract relevant metadata from disk images.
+pub mod mbr_error;
 
 use std::fs::File;
 use std::vec;
 
 use crate::constants;
+use crate::partitioning::mbr_error::MBRError;
 use crate::utils;
 
 /// Represents the type of a partition table entry.
@@ -104,7 +106,7 @@ impl MBR {
     /// # Returns
     /// - `Ok(MBR)` if the MBR is successfully parsed.
     /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
-    pub fn from_file(file: &mut File) -> std::io::Result<MBR> {
+    pub fn from_file(file: &mut File) -> Result<MBR, MBRError> {
         let mut buffer = vec![0; constants::SECTOR_SIZE];
         utils::read_sector(file, 0, &mut buffer)?;
 
@@ -117,10 +119,12 @@ impl MBR {
             }
         });
 
-        Ok(MBR {
-            pt_entries: pt_entries,
+        let mbr = MBR {
+            pt_entries,
             boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
-        })
+        };
+
+        mbr.validate()
     }
 
     /// Returns a reference to the partition table entries.
@@ -133,10 +137,17 @@ impl MBR {
     /// # Returns
     /// - `true` if the partition table is sorted, non-overlapping, and the boot signature is valid.
     /// - `false` otherwise.
-    pub fn is_supported(&self) -> bool {
-        self.is_partition_table_sorted()
-            && !self.is_partition_table_overlapping()
-            && !matches!(self.boot_signature, BootSignature::Unsupported(_))
+    fn validate(self) -> Result<Self, MBRError> {
+        self.check_partition_table_sorted()?
+            .check_partitions_non_overlapping()?
+            .check_signature()
+    }
+
+    fn check_signature(self) -> Result<Self, MBRError> {
+        match self.boot_signature {
+            BootSignature::Unsupported(sig) => Err(MBRError::InvalidSignature(sig)),
+            _ => Ok(self),
+        }
     }
 
     /// Checks if the partition table entries are sorted by their starting LBA.
@@ -144,10 +155,15 @@ impl MBR {
     /// # Returns
     /// - `true` if the entries are sorted.
     /// - `false` otherwise.
-    fn is_partition_table_sorted(&self) -> bool {
-        self.pt_entries
+    fn check_partition_table_sorted(self) -> Result<Self, MBRError> {
+        match self
+            .pt_entries
             .windows(2)
             .all(|pair| pair[0].lba_start <= pair[1].lba_start)
+        {
+            true => Ok(self),
+            false => Err(MBRError::PartitionTableNotSorted),
+        }
     }
 
     /// Checks if the partition table entries are overlapping.
@@ -155,9 +171,14 @@ impl MBR {
     /// # Returns
     /// - `true` if any entries overlap.
     /// - `false` otherwise.
-    fn is_partition_table_overlapping(&self) -> bool {
-        self.pt_entries
+    fn check_partitions_non_overlapping(self) -> Result<Self, MBRError> {
+        match self
+            .pt_entries
             .windows(2)
             .any(|pair| pair[0].lba_start + pair[0].sector_cnt > pair[1].lba_start)
+        {
+            true => Ok(self),
+            false => Err(MBRError::OverlappingPartitions),
+        }
     }
 }

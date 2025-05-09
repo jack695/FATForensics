@@ -9,12 +9,13 @@
 
 mod commands;
 mod constants;
-mod partition;
+mod partitioning;
 mod utils;
 
 pub use commands::Command;
-pub use partition::MBR;
-use std::{fs::File, io};
+pub use partitioning::MBR;
+use partitioning::mbr_error::MBRError;
+use std::fs::File;
 
 /// Prints the layout of the disk based on the provided Master Boot Record (MBR).
 ///
@@ -50,15 +51,10 @@ pub fn print_disk_layout(mbr: &MBR) {
 /// # Errors
 /// - Returns an error if the file cannot be opened.
 /// - Returns an error if the MBR cannot be parsed from the file.
-pub fn open_file(path: &str) -> io::Result<(File, MBR)> {
+pub fn open_file(path: &str) -> Result<(File, MBR), MBRError> {
     let mut f = File::open(path)?;
 
-    let mbr = MBR::from_file(&mut f).map_err(|err| {
-        io::Error::new(
-            err.kind(),
-            format!("Failed to parse MBR from file '{}': {}", &path, err),
-        )
-    })?;
+    let mbr = MBR::from_file(&mut f)?;
 
     Ok((f, mbr))
 }
