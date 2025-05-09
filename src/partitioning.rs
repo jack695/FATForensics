@@ -81,7 +81,8 @@ impl BootSignature {
     /// - `BootSignature::Unsupported(other)` for any other value.
     pub fn from_u16(sig: u16) -> BootSignature {
         match sig {
-            0x55AA => BootSignature::MBR,
+            // The signature 0x55AA is stored on disk in little-endian byte order.
+            0xAA55 => BootSignature::MBR,
             other => BootSignature::Unsupported(other),
         }
     }
