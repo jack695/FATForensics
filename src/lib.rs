@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! This is the main library module for the FAT32 file system tool.
 //!
 //! It provides functionality for interacting with FAT32 disk images, including
@@ -26,16 +24,28 @@ use std::fs::File;
 /// - Prints the MBR sector range.
 /// - Iterates through the partition table entries and prints their sector ranges.
 pub fn print_disk_layout(mbr: &MBR) {
-    let (s, e) = (0, 1);
-    print!("MBR\n___\n\tSectors: {s} -> {e}\n\n");
+    let mut last_end = 0;
+    let disk_end = mbr.sector_cnt();
 
-    for (part, pt_entry) in mbr.pt_entries().iter().enumerate() {
-        print!(
-            "Part #{}\n______\n\tSectors: {} -> {}\n\n",
-            part + 1,
-            pt_entry.lba_start(),
-            pt_entry.lba_start() + pt_entry.sector_cnt()
-        );
+    println!("Disk size (in sectors): {}", disk_end);
+    println!("[{:<8}, {:>8}[: MBR", 0, last_end);
+
+    for (i, entry) in mbr.pt_entries().iter().enumerate() {
+        let start = entry.lba_start();
+        let end = start + entry.sector_cnt();
+
+        if start > last_end {
+            println!("[{:<8}, {:>8}[: Unallocated", last_end, start);
+        }
+
+        println!("[{:<8}, {:>8}[: Part #{}", start, end, i + 1);
+
+        last_end = end;
+    }
+
+    let last_end = last_end as u64;
+    if last_end < disk_end {
+        println!("[{:<8}, {:>8}[: Unallocated", last_end, disk_end);
     }
 }
 

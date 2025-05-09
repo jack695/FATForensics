@@ -96,6 +96,7 @@ pub struct MBR {
     pt_entries: [PTEntry; constants::PART_CNT],
     /// The boot signature of the MBR.
     boot_signature: BootSignature,
+    sector_cnt: u64,
 }
 
 impl MBR {
@@ -123,6 +124,7 @@ impl MBR {
         let mbr = MBR {
             pt_entries,
             boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
+            sector_cnt: file.metadata()?.len() / constants::SECTOR_SIZE as u64,
         };
 
         mbr.validate()
@@ -140,6 +142,11 @@ impl MBR {
             .iter()
             .filter(|entry| entry.sector_cnt != 0)
             .collect()
+    }
+
+    /// Returns the size of the disk in sectors.
+    pub fn sector_cnt(&self) -> u64 {
+        self.sector_cnt
     }
 
     /// Validates the MBR by checking the partition table and boot signature.
