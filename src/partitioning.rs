@@ -128,21 +128,36 @@ impl MBR {
         mbr.validate()
     }
 
-    /// Returns a reference to the partition table entries.
-    pub fn get_pt_entries(&self) -> &[PTEntry; constants::PART_CNT] {
-        &self.pt_entries
-    }
-
-    /// Checks if the MBR is supported.
+    /// Returns a vector of references to non-empty partition table entries.
+    ///
+    /// This method filters the partition table entries to exclude any entries
+    /// with a sector count of zero, as these entries are considered empty.
     ///
     /// # Returns
-    /// - `true` if the partition table is sorted, non-overlapping, and the boot signature is valid.
-    /// - `false` otherwise.
+    /// - A `Vec` containing references to `PTEntry` instances that have a non-zero sector count.
+    pub fn get_pt_entries(&self) -> Vec<&PTEntry> {
+        self.pt_entries
+            .iter()
+            .filter(|entry| entry.sector_cnt != 0)
+            .collect()
+    }
+
+    /// Validates the MBR by checking the partition table and boot signature.
+    ///
+    /// # Returns
+    /// - `Ok(Self)` if the MBR is valid.
+    /// - `Err(MBRError)` if any validation step fails.
     fn validate(self) -> Result<Self, MBRError> {
         self.check_partition_table_sorted()?
             .check_partitions_non_overlapping()?
             .check_signature()
     }
+
+    /// Checks if the boot signature is valid.
+    ///
+    /// # Returns
+    /// - `Ok(Self)` if the boot signature is valid.
+    /// - `Err(MBRError::InvalidSignature)` if the boot signature is unsupported.
 
     fn check_signature(self) -> Result<Self, MBRError> {
         match self.boot_signature {
@@ -154,11 +169,11 @@ impl MBR {
     /// Checks if the partition table entries are sorted by their starting LBA.
     ///
     /// # Returns
-    /// - `true` if the entries are sorted.
-    /// - `false` otherwise.
+    /// - `Ok(Self)` if the entries are sorted.
+    /// - `Err(MBRError::PartitionTableNotSorted)` if the entries are not sorted.
     fn check_partition_table_sorted(self) -> Result<Self, MBRError> {
         match self
-            .pt_entries
+            .get_pt_entries()
             .windows(2)
             .all(|pair| pair[0].lba_start <= pair[1].lba_start)
         {
@@ -167,19 +182,19 @@ impl MBR {
         }
     }
 
-    /// Checks if the partition table entries are overlapping.
+    /// Checks if the partition table entries are non-overlapping.
     ///
     /// # Returns
-    /// - `true` if any entries overlap.
-    /// - `false` otherwise.
+    /// - `Ok(Self)` if the entries do not overlap.
+    /// - `Err(MBRError::OverlappingPartitions)` if any entries overlap.
     fn check_partitions_non_overlapping(self) -> Result<Self, MBRError> {
         match self
-            .pt_entries
+            .get_pt_entries()
             .windows(2)
             .any(|pair| pair[0].lba_start + pair[0].sector_cnt > pair[1].lba_start)
         {
-            true => Ok(self),
-            false => Err(MBRError::OverlappingPartitions),
+            true => Err(MBRError::OverlappingPartitions),
+            false => Ok(self),
         }
     }
 }
