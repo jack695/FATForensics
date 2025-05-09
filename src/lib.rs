@@ -29,12 +29,12 @@ pub fn print_disk_layout(mbr: &MBR) {
     let (s, e) = (0, 1);
     print!("MBR\n___\n\tSectors: {s} -> {e}\n\n");
 
-    for (part, pt_entry) in mbr.get_pt_entries().iter().enumerate() {
+    for (part, pt_entry) in mbr.pt_entries().iter().enumerate() {
         print!(
             "Part #{}\n______\n\tSectors: {} -> {}\n\n",
             part + 1,
-            pt_entry.get_lba_start(),
-            pt_entry.get_lba_start() + pt_entry.get_sector_cnt()
+            pt_entry.lba_start(),
+            pt_entry.lba_start() + pt_entry.sector_cnt()
         );
     }
 }

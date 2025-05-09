@@ -51,12 +51,12 @@ pub struct PTEntry {
 
 impl PTEntry {
     /// Returns the starting Logical Block Address (LBA) of the partition.
-    pub fn get_lba_start(&self) -> u32 {
+    pub fn lba_start(&self) -> u32 {
         self.lba_start
     }
 
     /// Returns the number of sectors in the partition.
-    pub fn get_sector_cnt(&self) -> u32 {
+    pub fn sector_cnt(&self) -> u32 {
         self.sector_cnt
     }
 }
@@ -135,7 +135,7 @@ impl MBR {
     ///
     /// # Returns
     /// - A `Vec` containing references to `PTEntry` instances that have a non-zero sector count.
-    pub fn get_pt_entries(&self) -> Vec<&PTEntry> {
+    pub fn pt_entries(&self) -> Vec<&PTEntry> {
         self.pt_entries
             .iter()
             .filter(|entry| entry.sector_cnt != 0)
@@ -173,7 +173,7 @@ impl MBR {
     /// - `Err(MBRError::PartitionTableNotSorted)` if the entries are not sorted.
     fn check_partition_table_sorted(self) -> Result<Self, MBRError> {
         match self
-            .get_pt_entries()
+            .pt_entries()
             .windows(2)
             .all(|pair| pair[0].lba_start <= pair[1].lba_start)
         {
@@ -189,7 +189,7 @@ impl MBR {
     /// - `Err(MBRError::OverlappingPartitions)` if any entries overlap.
     fn check_partitions_non_overlapping(self) -> Result<Self, MBRError> {
         match self
-            .get_pt_entries()
+            .pt_entries()
             .windows(2)
             .any(|pair| pair[0].lba_start + pair[0].sector_cnt > pair[1].lba_start)
         {
