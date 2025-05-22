@@ -12,6 +12,7 @@ mod utils;
 
 pub use commands::Command;
 pub use partitioning::MBR;
+pub use partitioning::PTType;
 use partitioning::mbr_error::MBRError;
 use std::fs::File;
 

@@ -14,7 +14,7 @@ use crate::utils;
 
 /// Represents the type of a partition table entry.
 #[derive(Debug)]
-enum PTType {
+pub enum PTType {
     /// Logical Block Addressing (LBA) FAT32 partition type.
     LBAFat32,
     /// Unsupported partition type, encapsulating the raw type byte.
@@ -58,6 +58,11 @@ impl PTEntry {
     /// Returns the number of sectors in the partition.
     pub fn sector_cnt(&self) -> u32 {
         self.sector_cnt
+    }
+
+    /// Return the partition type
+    pub fn pt_type(&self) -> &PTType {
+        &self.pt_type
     }
 }
 

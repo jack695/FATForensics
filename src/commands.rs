@@ -12,8 +12,10 @@ pub enum Command {
     Quit,
     /// Command to open a disk image, encapsulating the file path as a `String`.
     Open(String),
-    /// Command to print information.
+    /// Command to print general disk information.
     Print,
+    /// Select the partition to analyse.
+    Partition(u8),
     /// Command for an unknown input, encapsulating the raw input as a `String`.
     Unknown(String),
     /// Command for invalid input, encapsulating an error message as a `String`.
@@ -32,6 +34,7 @@ impl Command {
     /// - `Command::Quit` if the input is "quit".
     /// - `Command::Open` with the file path if the input starts with "open" followed by a valid argument.
     /// - `Command::Print` if the input is "print".
+    /// - `Command::Part` if the input is "part".
     /// - `Command::Unknown` if the input does not match any known command.
     /// - `Command::Invalid` if the input is "open" but missing an argument.
     /// - `Command::Empty` if the input is empty or contains only whitespace.
@@ -46,6 +49,17 @@ impl Command {
                 )),
             },
             Some("print") => Command::Print,
+            Some("part") => match parts.next() {
+                Some(arg) => match arg.parse::<u8>() {
+                    Ok(nb) => Command::Partition(nb),
+                    Err(_) => Command::Invalid(String::from(
+                        "Arg parsing error: 'part' expects an unsigned integer.",
+                    )),
+                },
+                None => Command::Invalid(String::from(
+                    "Missing arg: 'part' expects the partition number.",
+                )),
+            },
             Some(other) => Command::Unknown(other.to_string()),
             None => Command::Empty,
         }
