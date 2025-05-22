@@ -1,6 +1,7 @@
 # Local resources
 
 /local
+.DS_Store
 
 # Added by cargo
 
