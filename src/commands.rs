@@ -16,6 +16,8 @@ pub enum Command {
     Print,
     /// Select the partition to analyse.
     Partition(u8),
+    /// Skip the MBP validation
+    Skip,
     /// Command for an unknown input, encapsulating the raw input as a `String`.
     Unknown(String),
     /// Command for invalid input, encapsulating an error message as a `String`.
@@ -35,6 +37,7 @@ impl Command {
     /// - `Command::Open` with the file path if the input starts with "open" followed by a valid argument.
     /// - `Command::Print` if the input is "print".
     /// - `Command::Part` if the input is "part".
+    /// - `Command::Skip` if the input is "skip".
     /// - `Command::Unknown` if the input does not match any known command.
     /// - `Command::Invalid` if the input is "open" but missing an argument.
     /// - `Command::Empty` if the input is empty or contains only whitespace.
@@ -60,6 +63,7 @@ impl Command {
                     "Missing arg: 'part' expects the partition number.",
                 )),
             },
+            Some("skip") => Command::Skip,
             Some(other) => Command::Unknown(other.to_string()),
             None => Command::Empty,
         }

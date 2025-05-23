@@ -17,6 +17,8 @@ struct RunState {
     mbr: Option<MBR>,
     /// The index of the partition to analyse.
     bpb: Option<BPB>,
+    /// Enable the validation of the bpb
+    bpb_validation: bool,
 }
 
 fn main() {
@@ -24,6 +26,7 @@ fn main() {
         file: None,
         mbr: None,
         bpb: None,
+        bpb_validation: true,
     };
 
     loop {
@@ -65,8 +68,11 @@ fn main() {
                 let pt_entry = mbr.pt_entries()[part_index];
                 match pt_entry.pt_type() {
                     PTType::LBAFat32 => {
-                        match BPB::from_file(run_state.file.as_mut().unwrap(), pt_entry.lba_start())
-                        {
+                        match BPB::from_file(
+                            run_state.file.as_mut().unwrap(),
+                            pt_entry.lba_start(),
+                            run_state.bpb_validation,
+                        ) {
                             Ok(bpb) => run_state.bpb = Some(bpb),
                             Err(error) => eprintln!("{}", error),
                         }
@@ -76,6 +82,7 @@ fn main() {
                     }
                 }
             }
+            Command::Skip => run_state.bpb_validation = false,
             Command::Unknown(s) => eprintln!("Unknown command: {:?}", s),
             Command::Invalid(s) => eprintln!("{s}"),
             Command::Empty => {}

@@ -68,14 +68,14 @@ pub struct BPB {
 }
 
 impl BPB {
-    pub fn from_file(file: &mut File, sector: u32) -> Result<BPB, BPBError> {
+    pub fn from_file(file: &mut File, sector: u32, validate: bool) -> Result<BPB, BPBError> {
         let mut buf = vec![0; constants::SECTOR_SIZE];
         utils::read_sector(file, sector.into(), &mut buf)?;
 
         let mut reader = Cursor::new(buf);
         let bpb: BPB = reader.read_be().unwrap();
 
-        bpb.validate()
+        if validate { bpb.validate() } else { Ok(bpb) }
     }
 
     pub fn fat_type(&self) -> FATType {
