@@ -1,8 +1,6 @@
 use std::io::{Read, Seek, SeekFrom};
 use std::{fs, io};
 
-use crate::constants::SECTOR_SIZE;
-
 /// Reads a specific sector from a file into a buffer.
 ///
 /// # Arguments
@@ -11,15 +9,20 @@ use crate::constants::SECTOR_SIZE;
 /// * `sector` - The sector number to read.
 /// * `buffer` - A mutable reference to a vector where the sector data will be stored.
 ///
-/// The buffer will be resized to match the sector size defined by `SECTOR_SIZE`.
+/// The buffer will be resized to match the sector size.
 ///
 /// # Errors
 ///
 /// Returns an `io::Error` if the sector cannot be read.
-pub fn read_sector(file: &mut fs::File, sector: u64, buffer: &mut Vec<u8>) -> io::Result<()> {
-    buffer.resize(SECTOR_SIZE, 0);
+pub fn read_sector(
+    file: &mut fs::File,
+    sector: u64,
+    sector_size: usize,
+    buffer: &mut Vec<u8>,
+) -> io::Result<()> {
+    buffer.resize(sector_size, 0);
 
-    file.seek(SeekFrom::Start(SECTOR_SIZE as u64 * sector))?;
+    file.seek(SeekFrom::Start(sector_size as u64 * sector))?;
 
     file.read_exact(buffer).map_err(|err| {
         io::Error::new(

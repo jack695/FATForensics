@@ -3,8 +3,9 @@
 //! The program provides an interactive command-line interface for analyzing FAT32 disk images.
 //! Users can open disk images, print their layout, and quit the program using commands.
 
-use fat_forensics;
-use fat_forensics::{BPB, Command, MBR, PTType};
+use fat_forensics::commands::Command;
+use fat_forensics::disk::{MBR, PTType};
+use fat_forensics::volume::BPB;
 use std::{fs::File, io};
 
 /// Represents the runtime state of the program.
@@ -19,6 +20,8 @@ struct RunState {
     bpb: Option<BPB>,
     /// Enable the validation of the bpb
     bpb_validation: bool,
+    /// The size of a sector
+    sector_size: usize,
 }
 
 fn main() {
@@ -27,6 +30,7 @@ fn main() {
         mbr: None,
         bpb: None,
         bpb_validation: true,
+        sector_size: 512,
     };
 
     loop {
@@ -37,7 +41,7 @@ fn main() {
         let cmd = Command::from_string(&s);
 
         match cmd {
-            Command::Open(path) => match fat_forensics::open_file(&path) {
+            Command::Open(path) => match fat_forensics::open_file(&path, run_state.sector_size) {
                 Ok((file, mbr)) => {
                     run_state.file = Some(file);
                     run_state.mbr = Some(mbr);
@@ -72,6 +76,7 @@ fn main() {
                             run_state.file.as_mut().unwrap(),
                             pt_entry.lba_start(),
                             run_state.bpb_validation,
+                            run_state.sector_size,
                         ) {
                             Ok(bpb) => run_state.bpb = Some(bpb),
                             Err(error) => eprintln!("{}", error),

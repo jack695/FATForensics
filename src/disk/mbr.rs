@@ -3,14 +3,14 @@
 //!
 //! It defines structures and methods to interpret partition table entries,
 //! validate partition tables, and extract relevant metadata from disk images.
-pub mod mbr_error;
-
 use std::fs::File;
 use std::vec;
 
-use crate::constants;
-use crate::partitioning::mbr_error::MBRError;
+use super::mbr_error::MBRError;
 use crate::utils;
+
+/// The number of primary partitions supported by MBR.
+pub const PART_CNT: usize = 4;
 
 /// Represents the type of a partition table entry.
 #[derive(Debug)]
@@ -98,7 +98,7 @@ impl BootSignature {
 #[derive(Debug)]
 pub struct MBR {
     /// The partition table entries in the MBR.
-    pt_entries: [PTEntry; constants::PART_CNT],
+    pt_entries: [PTEntry; PART_CNT],
     /// The boot signature of the MBR.
     boot_signature: BootSignature,
     sector_cnt: u64,
@@ -113,11 +113,11 @@ impl MBR {
     /// # Returns
     /// - `Ok(MBR)` if the MBR is successfully parsed.
     /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
-    pub fn from_file(file: &mut File) -> Result<MBR, MBRError> {
-        let mut buffer = vec![0; constants::SECTOR_SIZE];
-        utils::read_sector(file, 0, &mut buffer)?;
+    pub fn from_file(file: &mut File, sector_size: usize) -> Result<MBR, MBRError> {
+        let mut buffer = vec![0; sector_size];
+        utils::read_sector(file, 0, sector_size, &mut buffer)?;
 
-        let pt_entries: [PTEntry; constants::PART_CNT] = core::array::from_fn(|i| {
+        let pt_entries: [PTEntry; PART_CNT] = core::array::from_fn(|i| {
             let offset = 446 + i * 16;
             PTEntry {
                 pt_type: PTType::from_byte(utils::u8_at(&buffer, offset + 0x04)),
@@ -129,7 +129,7 @@ impl MBR {
         let mbr = MBR {
             pt_entries,
             boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
-            sector_cnt: file.metadata()?.len() / constants::SECTOR_SIZE as u64,
+            sector_cnt: file.metadata()?.len() / sector_size as u64,
         };
 
         mbr.validate()

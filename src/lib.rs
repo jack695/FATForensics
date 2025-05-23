@@ -5,17 +5,13 @@
 //!
 //! The module re-exports key components such as `Command` and `MBR` for external use.
 
-mod commands;
-mod constants;
-mod fat;
-mod partitioning;
+pub mod commands;
+pub mod disk;
 mod utils;
+pub mod volume;
 
-pub use commands::Command;
-pub use fat::BPB;
-pub use partitioning::MBR;
-pub use partitioning::PTType;
-use partitioning::mbr_error::MBRError;
+use disk::MBR;
+use disk::MBRError;
 use std::fs::File;
 
 /// Prints the layout of the disk based on the provided Master Boot Record (MBR).
@@ -64,10 +60,10 @@ pub fn print_disk_layout(mbr: &MBR) {
 /// # Errors
 /// - Returns an error if the file cannot be opened.
 /// - Returns an error if the MBR cannot be parsed from the file.
-pub fn open_file(path: &str) -> Result<(File, MBR), MBRError> {
+pub fn open_file(path: &str, sector_size: usize) -> Result<(File, MBR), MBRError> {
     let mut f = File::open(path)?;
 
-    let mbr = MBR::from_file(&mut f)?;
+    let mbr = MBR::from_file(&mut f, sector_size)?;
 
     Ok((f, mbr))
 }

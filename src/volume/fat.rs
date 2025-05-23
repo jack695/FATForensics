@@ -1,14 +1,11 @@
-mod errors;
-
-use crate::constants;
-use crate::utils;
-use errors::BPBError;
-
 use binread::{BinRead, BinReaderExt};
 use std::fmt;
 use std::fs::File;
 use std::io::Cursor;
 use std::vec;
+
+use super::bpb_error::BPBError;
+use crate::utils;
 
 #[derive(PartialEq)]
 pub enum FATType {
@@ -68,9 +65,14 @@ pub struct BPB {
 }
 
 impl BPB {
-    pub fn from_file(file: &mut File, sector: u32, validate: bool) -> Result<BPB, BPBError> {
-        let mut buf = vec![0; constants::SECTOR_SIZE];
-        utils::read_sector(file, sector.into(), &mut buf)?;
+    pub fn from_file(
+        file: &mut File,
+        sector: u32,
+        validate: bool,
+        sector_size: usize,
+    ) -> Result<BPB, BPBError> {
+        let mut buf = vec![0; sector_size];
+        utils::read_sector(file, sector.into(), sector_size, &mut buf)?;
 
         let mut reader = Cursor::new(buf);
         let bpb: BPB = reader.read_be().unwrap();
