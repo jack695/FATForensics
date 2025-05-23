@@ -4,7 +4,7 @@
 //! Users can open disk images, print their layout, and quit the program using commands.
 
 use fat_forensics;
-use fat_forensics::{Command, MBR, PTType};
+use fat_forensics::{BPB, Command, MBR, PTType};
 use std::{fs::File, io};
 
 /// Represents the runtime state of the program.
@@ -16,14 +16,14 @@ struct RunState {
     /// The parsed Master Boot Record (MBR) of the opened file, if any.
     mbr: Option<MBR>,
     /// The index of the partition to analyse.
-    part: Option<u8>,
+    bpb: Option<BPB>,
 }
 
 fn main() {
     let mut run_state = RunState {
         file: None,
         mbr: None,
-        part: None,
+        bpb: None,
     };
 
     loop {
@@ -48,24 +48,34 @@ fn main() {
                 Some(ref mbr) => fat_forensics::print_disk_layout(mbr),
                 None => eprintln!("Open disk image first"),
             },
-            Command::Partition(part_nb) => match &run_state.mbr {
-                None => eprint!("Open disk image first"),
-                Some(mbr) => {
-                    if part_nb < 1 || part_nb as usize > mbr.pt_entries().len() {
-                        eprintln!(
-                            "Partition number for this disk should be between 1 and {}.",
-                            mbr.pt_entries().len()
-                        );
-                    } else {
-                        match mbr.pt_entries()[part_nb as usize].pt_type() {
-                            PTType::LBAFat32 => run_state.part = Some(part_nb),
-                            PTType::Unsupported(pt_type) => {
-                                eprintln!("Unsupported partition type: {:x}", pt_type)
-                            }
+            Command::Partition(part_nb) => {
+                let mbr = run_state.mbr.as_ref().expect("Open disk image first");
+
+                // Check whether a partition exists for that index
+                if part_nb < 1 || part_nb as usize > mbr.pt_entries().len() {
+                    eprintln!(
+                        "Partition number for this disk should be between 1 and {}.",
+                        mbr.pt_entries().len()
+                    );
+                    continue;
+                }
+                let part_index: usize = part_nb as usize - 1;
+
+                // Read the MBR
+                let pt_entry = mbr.pt_entries()[part_index];
+                match pt_entry.pt_type() {
+                    PTType::LBAFat32 => {
+                        match BPB::from_file(run_state.file.as_mut().unwrap(), pt_entry.lba_start())
+                        {
+                            Ok(bpb) => run_state.bpb = Some(bpb),
+                            Err(error) => eprintln!("{}", error),
                         }
                     }
+                    PTType::Unsupported(pt_type) => {
+                        eprintln!("Unsupported partition type: {:x}", pt_type)
+                    }
                 }
-            },
+            }
             Command::Unknown(s) => eprintln!("Unknown command: {:?}", s),
             Command::Invalid(s) => eprintln!("{s}"),
             Command::Empty => {}
