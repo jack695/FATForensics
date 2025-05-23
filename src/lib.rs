@@ -52,6 +52,7 @@ pub fn print_disk_layout(mbr: &MBR) {
 ///
 /// # Parameters
 /// - `path`: A string slice representing the path to the disk image file.
+/// - `sector_size`: The size in bytes of a sector.
 ///
 /// # Returns
 /// - `Ok((File, MBR))` if the file is successfully opened and the MBR is parsed.

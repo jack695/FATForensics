@@ -5,9 +5,10 @@ use std::{fs, io};
 ///
 /// # Arguments
 ///
-/// * `file` - A mutable reference to the file to read from.
-/// * `sector` - The sector number to read.
-/// * `buffer` - A mutable reference to a vector where the sector data will be stored.
+/// - `file`: A mutable reference to the file to read from.
+/// - `sector`: The sector number to read.
+/// - `sector_size`: The size in bytes of a sector.
+/// - `buffer`: A mutable reference to a vector where the sector data will be stored.
 ///
 /// The buffer will be resized to match the sector size.
 ///
@@ -38,8 +39,8 @@ pub fn read_sector(
 ///
 /// # Arguments
 ///
-/// * `buffer` - A slice of bytes from which the value will be extracted.
-/// * `offset` - The offset within the buffer where the 32-bit value starts.
+/// - `buffer`: A slice of bytes from which the value will be extracted.
+/// - `offset`: The offset within the buffer where the 32-bit value starts.
 ///
 /// # Panics
 ///
@@ -56,8 +57,8 @@ pub fn u32_at(buffer: &[u8], offset: usize) -> u32 {
 ///
 /// # Arguments
 ///
-/// * `buffer` - A slice of bytes from which the value will be extracted.
-/// * `offset` - The offset within the buffer where the 16-bit value starts.
+/// - `buffer`: A slice of bytes from which the value will be extracted.
+/// - `offset`: The offset within the buffer where the 16-bit value starts.
 ///
 /// # Panics
 ///
@@ -74,8 +75,8 @@ pub fn u16_at(buffer: &[u8], offset: usize) -> u16 {
 ///
 /// # Arguments
 ///
-/// * `buffer` - A slice of bytes from which the value will be extracted.
-/// * `offset` - The offset within the buffer where the 8-bit value starts.
+/// - `buffer`: A slice of bytes from which the value will be extracted.
+/// - `offset`: The offset within the buffer where the 8-bit value starts.
 ///
 /// # Panics
 ///
