@@ -70,7 +70,7 @@ impl PTEntry {
 #[derive(Debug)]
 enum BootSignature {
     /// Standard MBR boot signature (0x55AA).
-    MBR,
+    Mbr,
     /// Unsupported boot signature, encapsulating the raw value.
     Unsupported(u16),
 }
@@ -82,12 +82,12 @@ impl BootSignature {
     /// - `sig`: A 16-bit unsigned integer representing the boot signature.
     ///
     /// # Returns
-    /// - `BootSignature::MBR` if the signature matches `0x55AA`.
+    /// - `BootSignature::Mbr` if the signature matches `0x55AA`.
     /// - `BootSignature::Unsupported(other)` for any other value.
     pub fn from_u16(sig: u16) -> BootSignature {
         match sig {
             // The signature 0x55AA is stored on disk in little-endian byte order.
-            0xAA55 => BootSignature::MBR,
+            0xAA55 => BootSignature::Mbr,
             other => BootSignature::Unsupported(other),
         }
     }
@@ -170,7 +170,6 @@ impl MBR {
     /// # Returns
     /// - `Ok(Self)` if the boot signature is valid.
     /// - `Err(MBRError::InvalidSignature)` if the boot signature is unsupported.
-
     fn check_signature(self) -> Result<Self, MBRError> {
         match self.boot_signature {
             BootSignature::Unsupported(sig) => Err(MBRError::InvalidSignature(sig)),

@@ -76,6 +76,6 @@ pub enum BPBError {
 /// Converts standard I/O errors into BPBError.
 impl From<io::Error> for BPBError {
     fn from(err: io::Error) -> Self {
-        return BPBError::IOError(err);
+        BPBError::IOError(err)
     }
 }

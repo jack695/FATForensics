@@ -42,7 +42,7 @@ impl Command {
     /// - `Command::Invalid` if the input is "open" but missing an argument.
     /// - `Command::Empty` if the input is empty or contains only whitespace.
     pub fn from_string(s: &str) -> Self {
-        let mut parts = s.trim().split_whitespace();
+        let mut parts = s.split_whitespace();
         match parts.next() {
             Some("quit") => Command::Quit,
             Some("open") => match parts.next() {

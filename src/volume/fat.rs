@@ -149,8 +149,7 @@ impl BPB {
     /// # Returns
     /// - The number of data clusters.
     fn cluster_count(&self) -> u32 {
-        let root_dir_sectors =
-            (((self.root_ent_cnt * 32) + (self.bytes_per_sec - 1)) / self.bytes_per_sec) as u32;
+        let root_dir_sectors = (self.root_ent_cnt * 32).div_ceil(self.bytes_per_sec) as u32;
 
         let fat_sz = if self.fat_sz_16 > 0 {
             self.fat_sz_16 as u32
@@ -166,9 +165,7 @@ impl BPB {
 
         let data_sec = tot_sec
             - (self.rsvd_sec_cnt as u32 + (self.num_fat as u32 * fat_sz) + root_dir_sectors);
-        let clus_cnt = data_sec / self.sec_per_clus as u32;
-
-        clus_cnt
+        data_sec / self.sec_per_clus as u32
     }
 
     fn fat_sz(&self) -> u32 {
@@ -202,11 +199,11 @@ impl BPB {
         let clus_cnt = self.cluster_count();
 
         if clus_cnt < 4085 {
-            return FATType::FAT12;
+            FATType::FAT12
         } else if clus_cnt < 65525 {
-            return FATType::FAT16;
+            FATType::FAT16
         } else {
-            return FATType::FAT32;
+            FATType::FAT32
         }
     }
 
@@ -261,7 +258,7 @@ impl BPB {
         if fat_type == FATType::FAT32 {
             self.validate_fat32()
         } else {
-            return Err(BPBError::UnsupportedFATType(fat_type.to_string()));
+            Err(BPBError::UnsupportedFATType(fat_type.to_string()))
         }
     }
 
