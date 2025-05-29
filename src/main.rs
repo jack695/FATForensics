@@ -53,7 +53,7 @@ fn main() {
             },
             Command::Quit => break,
             Command::Print => match run_state.mbr {
-                Some(ref mbr) => fat_forensics::print_disk_layout(mbr),
+                Some(ref mbr) => println!("{}", mbr.display_layout(0, 0)),
                 None => eprintln!("Open disk image first"),
             },
             Command::Partition(part_nb) => {

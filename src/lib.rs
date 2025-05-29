@@ -15,40 +15,6 @@ use disk::MBR;
 use disk::MBRError;
 use std::fs::File;
 
-/// Prints the layout of the disk based on the provided Master Boot Record (MBR).
-///
-/// # Parameters
-/// - `mbr`: A reference to an `MBR` instance representing the parsed Master Boot Record.
-///
-/// # Behavior
-/// - Prints the MBR sector range.
-/// - Iterates through the partition table entries and prints their sector ranges.
-pub fn print_disk_layout(mbr: &MBR) {
-    let mut last_end = 0;
-    let disk_end = mbr.sector_cnt();
-
-    println!("Disk size (in sectors): {}", disk_end);
-    println!("[{:<8}, {:>8}[: MBR", 0, last_end);
-
-    for (i, entry) in mbr.pt_entries().iter().enumerate() {
-        let start = entry.lba_start();
-        let end = start + entry.sector_cnt();
-
-        if start > last_end {
-            println!("[{:<8}, {:>8}[: Unallocated", last_end, start);
-        }
-
-        println!("[{:<8}, {:>8}[: Part #{}", start, end, i + 1);
-
-        last_end = end;
-    }
-
-    let last_end = last_end as u64;
-    if last_end < disk_end {
-        println!("[{:<8}, {:>8}[: Unallocated", last_end, disk_end);
-    }
-}
-
 /// Opens a disk image file and parses its Master Boot Record (MBR).
 ///
 /// # Parameters
