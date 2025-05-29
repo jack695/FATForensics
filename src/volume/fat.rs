@@ -322,6 +322,75 @@ impl BPB {
     }
 }
 
+/// Implements the Display trait for BPB
+impl fmt::Display for BPB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut offset = 0;
+
+        macro_rules! field {
+            ($name:expr, $val:expr, $size:expr) => {{
+                writeln!(f, "  {:<20} 0x{:>04X}: {}", $name, offset, $val)?;
+                offset += $size;
+            }};
+        }
+
+        writeln!(f, "BIOS Parameter Block (BPB):")?;
+
+        field!("jmp", format!("{:02X?}", self.jmp), 3);
+        field!("oem_name", String::from_utf8_lossy(&self.oem_name), 8);
+        field!("bytes_per_sec", self.bytes_per_sec, 2);
+        field!("sec_per_clus", self.sec_per_clus, 1);
+        field!("rsvd_sec_cnt", self.rsvd_sec_cnt, 2);
+        field!("num_fat", self.num_fat, 1);
+        field!("root_ent_cnt", self.root_ent_cnt, 2);
+        field!("tot_sec_16", self.tot_sec_16, 2);
+        field!("media", format!("0x{:X}", self.media), 1);
+        field!("fat_sz_16", self.fat_sz_16, 2);
+        field!("sec_per_trl", self.sec_per_trl, 2);
+        field!("num_heds", self.num_heds, 2);
+        field!("hidd_sec", self.hidd_sec, 4);
+        field!("tot_sec_32", self.tot_sec_32, 4);
+        field!("fat_sz_32", self.fat_sz_32, 4);
+        field!("ext_flags", self.ext_flags, 2);
+        field!("fs_ver", self.fs_ver, 2);
+        field!("root_clus", self.root_clus, 4);
+        field!("fs_info", self.fs_info, 2);
+        field!("bk_boot_sec", self.bk_boot_sec, 2);
+        field!("reserved", format!("{:02X?}", &self.reserved[..]), 12);
+        field!("drv_num", format!("0x{:X}", self.drv_num), 1);
+        field!("reserved_1", self.reserved_1, 1);
+        field!("boot_sig", format!("0x{:X}", self.boot_sig), 1);
+        field!("vol_id", format!("0x{:X}", self.vol_id), 4);
+        field!("vol_lab", String::from_utf8_lossy(&self.vol_lab), 11);
+        field!(
+            "fil_sys_type",
+            String::from_utf8_lossy(&self.fil_sys_type),
+            8
+        );
+
+        // Now dump boot code with offsets
+        writeln!(
+            f,
+            "\nBoot Code 0x{:04X} ({} bytes):",
+            offset,
+            self.boot_code.len()
+        )?;
+        for (i, chunk) in self.boot_code.chunks(16).enumerate() {
+            write!(f, "  0x{:04X}: ", offset + i * 16)?;
+            for byte in chunk {
+                write!(f, "{:02X} ", byte)?;
+            }
+            writeln!(f)?;
+        }
+        offset += self.boot_code.len();
+
+        // Signature
+        writeln!(f, "\nSignature 0x{:04X}: {:02X?}", offset, self.sig)?;
+
+        Ok(())
+    }
+}
+
 /// Implements the LayoutDisplay trait for BPB
 impl LayoutDisplay for BPB {
     fn display_layout(&self, sector_offset: u64, indent: u8) -> String {
