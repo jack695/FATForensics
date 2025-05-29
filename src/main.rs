@@ -85,6 +85,7 @@ fn main() {
                                     "{}",
                                     run_state
                                         .bpb
+                                        .as_ref()
                                         .unwrap()
                                         .display_layout(pt_entry.lba_start() as u64, 3)
                                 );
