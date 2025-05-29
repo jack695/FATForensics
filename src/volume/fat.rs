@@ -142,14 +142,11 @@ impl BPB {
         if validate { bpb.validate() } else { Ok(bpb) }
     }
 
-    /// Determines the FAT type based on the number of clusters in the filesystem.
+    /// Determines the number of clusters in the data section.
     ///
     /// # Returns
-    /// - `FATType`: The detected filesystem type based on cluster count:
-    ///   - `FAT12` if cluster count < 4085
-    ///   - `FAT16` if cluster count < 65525
-    ///   - `FAT32` if cluster count >= 65525
-    pub fn fat_type(&self) -> FATType {
+    /// - The number of data clusters.
+    fn cluster_count(&self) -> u32 {
         let root_dir_sectors =
             (((self.root_ent_cnt * 32) + (self.bytes_per_sec - 1)) / self.bytes_per_sec) as u32;
 
@@ -168,6 +165,39 @@ impl BPB {
         let data_sec = tot_sec
             - (self.rsvd_sec_cnt as u32 + (self.num_fat as u32 * fat_sz) + root_dir_sectors);
         let clus_cnt = data_sec / self.sec_per_clus as u32;
+
+        clus_cnt
+    }
+
+    fn fat_sz(&self) -> u32 {
+        match self.fat_type() {
+            FATType::FAT32 => self.fat_sz_32,
+            _ => self.fat_sz_16.into(),
+        }
+    }
+
+    fn tot_sec(&self) -> u32 {
+        match self.fat_type() {
+            FATType::FAT32 => self.tot_sec_32,
+            _ => {
+                if self.tot_sec_16 == 0 {
+                    self.tot_sec_32
+                } else {
+                    self.tot_sec_16.into()
+                }
+            }
+        }
+    }
+
+    /// Determines the FAT type based on the number of clusters in the filesystem.
+    ///
+    /// # Returns
+    /// - `FATType`: The detected filesystem type based on cluster count:
+    ///   - `FAT12` if cluster count < 4085
+    ///   - `FAT16` if cluster count < 65525
+    ///   - `FAT32` if cluster count >= 65525
+    fn fat_type(&self) -> FATType {
+        let clus_cnt = self.cluster_count();
 
         if clus_cnt < 4085 {
             return FATType::FAT12;
@@ -267,7 +297,7 @@ impl BPB {
                 "BPB_TotSec16 should be 0 for a FAT32 volume.",
             )));
         }
-        if self.tot_sec_32 == 0 {
+        if self.tot_sec() == 0 {
             return Err(BPBError::InvalidTotSec(String::from(
                 "BPB_TotSec32 should be greater than 0 for a FAT32 volume.",
             )));
