@@ -7,11 +7,13 @@
 
 use binread::{BinRead, BinReaderExt};
 use std::fmt;
+use std::fmt::Write;
 use std::fs::File;
 use std::io::Cursor;
 use std::vec;
 
 use super::bpb_error::BPBError;
+use crate::traits::LayoutDisplay;
 use crate::utils;
 
 /// Represents the different types of FAT filesystems.
@@ -320,5 +322,68 @@ impl BPB {
         }
 
         Ok(self)
+    }
+}
+
+/// Implements the LayoutDisplay trait for BPB
+impl LayoutDisplay for BPB {
+    fn display_layout(&self, sector_offset: u64, indent: u8) -> String {
+        let mut out = String::from("");
+        let indent = " ".repeat(indent.into());
+
+        let rsvd_start = sector_offset;
+        let fat_start: u64 = sector_offset + u64::from(self.rsvd_sec_cnt);
+        let data_start = fat_start + u64::from(self.fat_sz()) * u64::from(self.num_fat);
+        let data_end = data_start + u64::from(self.cluster_count()) * u64::from(self.sec_per_clus);
+
+        writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
+        writeln!(
+            out,
+            "{}├{:^12}┬{:^12}┬{:^12}┬{:^16}┤",
+            indent, "Region", "Start", "End", "Description"
+        )
+        .unwrap();
+        writeln!(
+            out,
+            "{}├{:─<12}┼{:─<12}┼{:─<12}┼{:─<16}┤",
+            indent, "", "", "", ""
+        )
+        .unwrap();
+
+        writeln!(
+            out,
+            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+            indent, "Reserved", rsvd_start, fat_start, "Boot + Reserved"
+        )
+        .unwrap();
+        for i in 0..self.num_fat {
+            let fat_i_start = fat_start + u64::from(i) * u64::from(self.fat_sz());
+            let fat_i_end = fat_i_start + u64::from(self.fat_sz());
+            writeln!(
+                out,
+                "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+                indent,
+                format!("FAT #{}", i),
+                fat_i_start,
+                fat_i_end,
+                "FAT Tables"
+            )
+            .unwrap();
+        }
+        writeln!(
+            out,
+            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+            indent, "Data", data_start, data_end, "Cluster Data"
+        )
+        .unwrap();
+
+        writeln!(
+            out,
+            "{}└{:─<12}┴{:─<12}┴{:─<12}┴{:─<16}┘",
+            indent, "", "", "", ""
+        )
+        .unwrap();
+
+        out
     }
 }

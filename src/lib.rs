@@ -7,6 +7,7 @@
 
 pub mod commands;
 pub mod disk;
+pub mod traits;
 mod utils;
 pub mod volume;
 

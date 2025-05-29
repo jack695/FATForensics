@@ -5,6 +5,7 @@
 
 use fat_forensics::commands::Command;
 use fat_forensics::disk::{MBR, PTType};
+use fat_forensics::traits::LayoutDisplay;
 use fat_forensics::volume::BPB;
 use std::{fs::File, io};
 
@@ -78,7 +79,16 @@ fn main() {
                             run_state.bpb_validation,
                             run_state.sector_size,
                         ) {
-                            Ok(bpb) => run_state.bpb = Some(bpb),
+                            Ok(bpb) => {
+                                run_state.bpb = Some(bpb);
+                                print!(
+                                    "{}",
+                                    run_state
+                                        .bpb
+                                        .unwrap()
+                                        .display_layout(pt_entry.lba_start() as u64, 3)
+                                );
+                            }
                             Err(error) => eprintln!("{}", error),
                         }
                     }
