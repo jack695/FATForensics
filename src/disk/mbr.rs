@@ -6,11 +6,11 @@
 use std::fs::File;
 use std::vec;
 
-use super::mbr_error::MBRError;
+use super::disk_error::DiskError;
 use crate::traits::LayoutDisplay;
 use crate::utils;
-use std::fmt;
 use std::fmt::Write;
+use std::fmt::{self, Display};
 
 /// The number of primary partitions supported by MBR.
 pub const PART_CNT: usize = 4;
@@ -22,6 +22,15 @@ pub enum PTType {
     LBAFat32,
     /// Unsupported partition type, encapsulating the raw type byte.
     Unsupported(u8),
+}
+
+impl Display for PTType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PTType::LBAFat32 => write!(f, "LBA FAT32"),
+            PTType::Unsupported(b) => write!(f, "Unsupported: 0x{:02X}", b),
+        }
+    }
 }
 
 impl PTType {
@@ -126,7 +135,7 @@ impl MBR {
     /// # Returns
     /// - `Ok(MBR)` if the MBR is successfully parsed.
     /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
-    pub fn from_file(file: &mut File, sector_size: usize) -> Result<MBR, MBRError> {
+    pub fn from_file(file: &mut File, sector_size: usize) -> Result<MBR, DiskError> {
         let mut buffer = vec![0; sector_size];
         utils::read_sector(file, 0, sector_size, &mut buffer)?;
 
@@ -166,8 +175,8 @@ impl MBR {
     ///
     /// # Returns
     /// - `Ok(Self)` if the MBR is valid.
-    /// - `Err(MBRError)` if any validation step fails.
-    fn validate(self) -> Result<Self, MBRError> {
+    /// - `Err(DiskError)` if any validation step fails.
+    fn validate(self) -> Result<Self, DiskError> {
         self.check_partition_table_sorted()?
             .check_partitions_non_overlapping()?
             .check_signature()
@@ -177,10 +186,10 @@ impl MBR {
     ///
     /// # Returns
     /// - `Ok(Self)` if the boot signature is valid.
-    /// - `Err(MBRError::InvalidSignature)` if the boot signature is unsupported.
-    fn check_signature(self) -> Result<Self, MBRError> {
+    /// - `Err(DiskError::InvalidSignature)` if the boot signature is unsupported.
+    fn check_signature(self) -> Result<Self, DiskError> {
         match self.boot_signature {
-            BootSignature::Unsupported(sig) => Err(MBRError::InvalidSignature(sig)),
+            BootSignature::Unsupported(sig) => Err(DiskError::InvalidSignature(sig)),
             _ => Ok(self),
         }
     }
@@ -189,15 +198,15 @@ impl MBR {
     ///
     /// # Returns
     /// - `Ok(Self)` if the entries are sorted.
-    /// - `Err(MBRError::PartitionTableNotSorted)` if the entries are not sorted.
-    fn check_partition_table_sorted(self) -> Result<Self, MBRError> {
+    /// - `Err(DiskError::PartitionTableNotSorted)` if the entries are not sorted.
+    fn check_partition_table_sorted(self) -> Result<Self, DiskError> {
         match self
             .pt_entries()
             .windows(2)
             .all(|pair| pair[0].lba_start <= pair[1].lba_start)
         {
             true => Ok(self),
-            false => Err(MBRError::PartitionTableNotSorted),
+            false => Err(DiskError::PartitionTableNotSorted),
         }
     }
 
@@ -205,14 +214,14 @@ impl MBR {
     ///
     /// # Returns
     /// - `Ok(Self)` if the entries do not overlap.
-    /// - `Err(MBRError::OverlappingPartitions)` if any entries overlap.
-    fn check_partitions_non_overlapping(self) -> Result<Self, MBRError> {
+    /// - `Err(DiskError::OverlappingPartitions)` if any entries overlap.
+    fn check_partitions_non_overlapping(self) -> Result<Self, DiskError> {
         match self
             .pt_entries()
             .windows(2)
             .any(|pair| pair[0].lba_start + pair[0].sector_cnt > pair[1].lba_start)
         {
-            true => Err(MBRError::OverlappingPartitions),
+            true => Err(DiskError::OverlappingPartitions),
             false => Ok(self),
         }
     }
@@ -279,7 +288,7 @@ impl LayoutDisplay for MBR {
                 format!("Part #{}", i + 1),
                 start,
                 end,
-                format!("{:?}", entry.pt_type())
+                format!("{:}", entry.pt_type())
             )
             .unwrap();
 
