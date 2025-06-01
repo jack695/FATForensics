@@ -118,7 +118,7 @@ impl fmt::Display for BootSignature {
 /// Represents a Master Boot Record (MBR), including partition table entries
 /// and the boot signature.
 #[derive(Debug)]
-pub struct MBR {
+pub struct Mbr {
     /// The partition table entries in the MBR.
     pt_entries: [PTEntry; PART_CNT],
     /// The boot signature of the MBR.
@@ -126,7 +126,7 @@ pub struct MBR {
     sector_cnt: u64,
 }
 
-impl MBR {
+impl Mbr {
     /// Reads and parses an MBR from a file.
     ///
     /// # Parameters
@@ -135,7 +135,7 @@ impl MBR {
     /// # Returns
     /// - `Ok(MBR)` if the MBR is successfully parsed.
     /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
-    pub fn from_file(file: &mut File, sector_size: usize) -> Result<MBR, DiskError> {
+    pub fn from_file(file: &mut File, sector_size: usize) -> Result<Mbr, DiskError> {
         let mut buffer = vec![0; sector_size];
         utils::read_sector(file, 0, sector_size, &mut buffer)?;
 
@@ -148,7 +148,7 @@ impl MBR {
             }
         });
 
-        let mbr = MBR {
+        let mbr = Mbr {
             pt_entries,
             boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
             sector_cnt: file.metadata()?.len() / sector_size as u64,
@@ -235,7 +235,7 @@ impl MBR {
 /// # Behavior
 /// - Prints the MBR sector range.
 /// - Iterates through the partition table entries and prints their sector ranges.
-impl LayoutDisplay for MBR {
+impl LayoutDisplay for Mbr {
     fn display_layout(&self, _: u64, indent: u8) -> String {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());

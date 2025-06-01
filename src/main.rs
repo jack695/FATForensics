@@ -4,7 +4,7 @@
 //! Users can open disk images, print their layout, and quit the program using commands.
 
 use fat_forensics::commands::Command;
-use fat_forensics::disk::Disk;
+use fat_forensics::partitioning::Disk;
 use std::io::{self, Write};
 
 /// Represents the runtime state of the program.
