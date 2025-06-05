@@ -1,4 +1,5 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::{fs, io};
 
 /// Reads a specific sector from a file into a buffer.
@@ -31,6 +32,43 @@ pub fn read_sector(
             format!("Failed to read sector {}: {}", sector, err),
         )
     })?;
+
+    Ok(())
+}
+
+/// Writes data to a file at a specific offset.
+///
+/// # Arguments
+///
+/// - `disk`: A mutable reference to the file to write to.
+/// - `offset`: The offset in bytes where the data will be written.
+/// - `data`: A reference to a vector containing the data to be written.
+pub fn write_at(disk: &mut File, offset: u64, data: &Vec<u8>) -> io::Result<()> {
+    disk.seek(SeekFrom::Start(offset))?;
+    disk.write_all(data)
+}
+
+/// Writes the contents of a file to a specific offset in a disk.
+///
+/// # Arguments
+///
+/// - `disk`: A mutable reference to the file to write to.
+/// - `offset`: The offset in bytes where the data will be written.
+pub fn write_file_at(
+    disk: &mut File,
+    offset: u64,
+    path: &str,
+    sector_size: usize,
+) -> io::Result<()> {
+    let mut f = File::open(path)?;
+    let f_len = f.metadata().unwrap().len();
+
+    for s in (0..f_len).step_by(sector_size) {
+        let mut v: Vec<u8> = vec![0; sector_size];
+        let bytes_read = f.read(&mut v)?;
+        v.resize(bytes_read, 0);
+        write_at(disk, offset + s, &v)?;
+    }
 
     Ok(())
 }
