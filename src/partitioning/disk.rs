@@ -11,8 +11,8 @@ use std::fs::File;
 use super::disk_error::DiskError;
 use super::mbr::Mbr;
 use super::mbr::PTType;
+use crate::file_system::BPB;
 use crate::traits::LayoutDisplay;
-use crate::volume::BPB;
 
 /// Represents different types of partition tables that can be found on a disk.
 /// Currently only MBR is supported.

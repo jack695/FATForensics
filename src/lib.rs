@@ -6,7 +6,7 @@
 //! The module re-exports key components such as `Command` and `MBR` for external use.
 
 pub mod commands;
+pub mod file_system;
 pub mod partitioning;
 pub mod traits;
 mod utils;
-pub mod volume;

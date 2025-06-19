@@ -1,4 +1,4 @@
-//! FAT32 filesystem structures and parsing.
+//! FAT32 filesystem structures and parsing.q
 //!
 //! This module implements the core structures for FAT32 filesystem analysis, including:
 //! - BIOS Parameter Block (BPB) parsing and validation
