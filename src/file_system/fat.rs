@@ -42,6 +42,112 @@ impl fmt::Display for FATType {
     }
 }
 
+/// Structure for a FAT volume.
+///
+/// Essentially, it is a wrapper around the BPB.
+pub struct FATVol {
+    bpb: BPB,
+    start: u32,
+    end: u32,
+}
+
+impl FATVol {
+    /// Reads the BPB from a file at the specified sector and optionally validates the volume.
+    ///
+    /// # Parameters
+    /// - `file`: The file containing the filesystem
+    /// - `sector`: The sector number where the BPB is located
+    /// - `validate`: Whether to perform validation checks on the BPB
+    /// - `sector_size`: The size of each sector in bytes
+    ///
+    /// # Returns
+    /// - `Ok(FATVol)`: The FAT volume
+    /// - `Err(BPBError)`: If reading fails or validation fails
+    ///
+    /// # Errors
+    /// - Returns `BPBError::IOError` if reading from the file fails
+    /// - Returns various `BPBError` variants if validation fails and `validate` is true
+    pub fn from_file(
+        file: &mut File,
+        start: u32,
+        sector_cnt: u32,
+        validate: bool,
+        sector_size: usize,
+    ) -> Result<FATVol, BPBError> {
+        let bpb = BPB::from_file(file, start, validate, sector_size)?;
+
+        Ok(Self {
+            bpb: bpb,
+            start: start,
+            end: start + sector_cnt,
+        })
+    }
+}
+
+/// Implements the LayoutDisplay trait for BPB
+impl LayoutDisplay for FATVol {
+    fn display_layout(&self, sector_offset: u64, indent: u8) -> String {
+        let mut out = String::from("");
+        let indent = " ".repeat(indent.into());
+
+        let rsvd_start = sector_offset;
+        let fat_start: u64 = sector_offset + u64::from(self.bpb.rsvd_sec_cnt);
+        let data_start = fat_start + u64::from(self.bpb.fat_sz()) * u64::from(self.bpb.num_fat);
+        let data_end =
+            data_start + u64::from(self.bpb.cluster_count()) * u64::from(self.bpb.sec_per_clus);
+
+        writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
+        writeln!(
+            out,
+            "{}├{:^12}┬{:^12}┬{:^12}┬{:^16}┤",
+            indent, "Region", "Start", "End", "Description"
+        )
+        .unwrap();
+        writeln!(
+            out,
+            "{}├{:─<12}┼{:─<12}┼{:─<12}┼{:─<16}┤",
+            indent, "", "", "", ""
+        )
+        .unwrap();
+
+        writeln!(
+            out,
+            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+            indent, "Reserved", rsvd_start, fat_start, "Boot + Reserved"
+        )
+        .unwrap();
+        for i in 0..self.bpb.num_fat {
+            let fat_i_start = fat_start + u64::from(i) * u64::from(self.bpb.fat_sz());
+            let fat_i_end = fat_i_start + u64::from(self.bpb.fat_sz());
+            writeln!(
+                out,
+                "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+                indent,
+                format!("FAT #{}", i),
+                fat_i_start,
+                fat_i_end,
+                "FAT Tables"
+            )
+            .unwrap();
+        }
+        writeln!(
+            out,
+            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+            indent, "Data", data_start, data_end, "Cluster Data"
+        )
+        .unwrap();
+
+        writeln!(
+            out,
+            "{}└{:─<12}┴{:─<12}┴{:─<12}┴{:─<16}┘",
+            indent, "", "", "", ""
+        )
+        .unwrap();
+
+        out
+    }
+}
+
 /// BIOS Parameter Block structure for FAT filesystems.
 ///
 /// The BPB contains essential information about the filesystem layout and properties.
@@ -388,68 +494,5 @@ impl fmt::Display for BPB {
         writeln!(f, "\nSignature 0x{:04X}: {:02X?}", offset, self.sig)?;
 
         Ok(())
-    }
-}
-
-/// Implements the LayoutDisplay trait for BPB
-impl LayoutDisplay for BPB {
-    fn display_layout(&self, sector_offset: u64, indent: u8) -> String {
-        let mut out = String::from("");
-        let indent = " ".repeat(indent.into());
-
-        let rsvd_start = sector_offset;
-        let fat_start: u64 = sector_offset + u64::from(self.rsvd_sec_cnt);
-        let data_start = fat_start + u64::from(self.fat_sz()) * u64::from(self.num_fat);
-        let data_end = data_start + u64::from(self.cluster_count()) * u64::from(self.sec_per_clus);
-
-        writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
-        writeln!(
-            out,
-            "{}├{:^12}┬{:^12}┬{:^12}┬{:^16}┤",
-            indent, "Region", "Start", "End", "Description"
-        )
-        .unwrap();
-        writeln!(
-            out,
-            "{}├{:─<12}┼{:─<12}┼{:─<12}┼{:─<16}┤",
-            indent, "", "", "", ""
-        )
-        .unwrap();
-
-        writeln!(
-            out,
-            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-            indent, "Reserved", rsvd_start, fat_start, "Boot + Reserved"
-        )
-        .unwrap();
-        for i in 0..self.num_fat {
-            let fat_i_start = fat_start + u64::from(i) * u64::from(self.fat_sz());
-            let fat_i_end = fat_i_start + u64::from(self.fat_sz());
-            writeln!(
-                out,
-                "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-                indent,
-                format!("FAT #{}", i),
-                fat_i_start,
-                fat_i_end,
-                "FAT Tables"
-            )
-            .unwrap();
-        }
-        writeln!(
-            out,
-            "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-            indent, "Data", data_start, data_end, "Cluster Data"
-        )
-        .unwrap();
-
-        writeln!(
-            out,
-            "{}└{:─<12}┴{:─<12}┴{:─<12}┴{:─<16}┘",
-            indent, "", "", "", ""
-        )
-        .unwrap();
-
-        out
     }
 }

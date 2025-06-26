@@ -11,7 +11,7 @@ use std::fs::File;
 use super::disk_error::DiskError;
 use super::mbr::Mbr;
 use super::mbr::PTType;
-use crate::file_system::BPB;
+use crate::file_system::FATVol;
 use crate::traits::LayoutDisplay;
 
 /// Represents different types of partition tables that can be found on a disk.
@@ -24,8 +24,7 @@ enum PartTable {
 /// Represents different types of volumes that can be found in partitions.
 /// Currently only FAT32 is supported.
 enum Volume {
-    /// FAT32 volume with its BIOS Parameter Block
-    FAT32(BPB),
+    FAT32(FATVol),
 }
 
 /// Represents a disk image with its partition table and volumes.
@@ -63,9 +62,15 @@ impl Disk {
         for (part_idx, pt_entry) in mbr.pt_entries().iter().enumerate() {
             if let PTType::LBAFat32 = pt_entry.pt_type() {
                 {
-                    match BPB::from_file(&mut f, pt_entry.lba_start(), validation, sector_size) {
-                        Ok(bpb) => {
-                            vol.push((pt_entry.lba_start(), Volume::FAT32(bpb)));
+                    match FATVol::from_file(
+                        &mut f,
+                        pt_entry.lba_start(),
+                        pt_entry.sector_cnt(),
+                        validation,
+                        sector_size,
+                    ) {
+                        Ok(fat_vol) => {
+                            vol.push((pt_entry.lba_start(), Volume::FAT32(fat_vol)));
                         }
                         Err(error) => {
                             eprintln!("Error while reading partition #{}: {}", part_idx, error)
