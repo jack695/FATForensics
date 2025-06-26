@@ -34,7 +34,7 @@ pub struct Disk {
     /// The partition table found on the disk
     part_table: PartTable,
     /// List of volumes found on the disk, with their starting sector offsets
-    volumes: Vec<(u32, Volume)>,
+    volumes: Vec<Volume>,
 }
 
 impl Disk {
@@ -70,7 +70,7 @@ impl Disk {
                         sector_size,
                     ) {
                         Ok(fat_vol) => {
-                            vol.push((pt_entry.lba_start(), Volume::FAT32(fat_vol)));
+                            vol.push(Volume::FAT32(fat_vol));
                         }
                         Err(error) => {
                             eprintln!("Error while reading partition #{}: {}", part_idx, error)
@@ -99,13 +99,13 @@ impl Disk {
     /// - Volume information for each partition
     pub fn print_layout(&self, indent: u8) {
         match &self.part_table {
-            PartTable::Mbr(mbr) => print!("{}", mbr.display_layout(0, indent)),
+            PartTable::Mbr(mbr) => print!("{}", mbr.display_layout(indent)),
         }
 
-        for (offset, vol) in self.volumes.iter() {
+        for vol in self.volumes.iter() {
             match vol {
-                Volume::FAT32(bpb) => {
-                    print!("\n{}", bpb.display_layout((*offset).into(), indent + 3))
+                Volume::FAT32(vol) => {
+                    print!("\n{}", vol.display_layout(indent + 3))
                 }
             }
         }

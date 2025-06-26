@@ -86,15 +86,14 @@ impl FATVol {
 
 /// Implements the LayoutDisplay trait for BPB
 impl LayoutDisplay for FATVol {
-    fn display_layout(&self, sector_offset: u64, indent: u8) -> String {
+    fn display_layout(&self, indent: u8) -> String {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());
 
-        let rsvd_start = sector_offset;
-        let fat_start: u64 = sector_offset + u64::from(self.bpb.rsvd_sec_cnt);
-        let data_start = fat_start + u64::from(self.bpb.fat_sz()) * u64::from(self.bpb.num_fat);
-        let data_end =
-            data_start + u64::from(self.bpb.cluster_count()) * u64::from(self.bpb.sec_per_clus);
+        let rsvd_start = self.start;
+        let fat_start = self.start + u32::from(self.bpb.rsvd_sec_cnt);
+        let data_start = fat_start + self.bpb.fat_sz() * self.bpb.num_fat as u32;
+        let data_end = data_start + self.bpb.cluster_count() * self.bpb.sec_per_clus as u32;
 
         writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
         writeln!(
@@ -117,8 +116,8 @@ impl LayoutDisplay for FATVol {
         )
         .unwrap();
         for i in 0..self.bpb.num_fat {
-            let fat_i_start = fat_start + u64::from(i) * u64::from(self.bpb.fat_sz());
-            let fat_i_end = fat_i_start + u64::from(self.bpb.fat_sz());
+            let fat_i_start = fat_start + i as u32 * self.bpb.fat_sz();
+            let fat_i_end = fat_i_start + self.bpb.fat_sz();
             writeln!(
                 out,
                 "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
@@ -136,6 +135,14 @@ impl LayoutDisplay for FATVol {
             indent, "Data", data_start, data_end, "Cluster Data"
         )
         .unwrap();
+        if data_end < self.end {
+            writeln!(
+                out,
+                "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+                indent, "", data_end, self.end, "Volume Slack"
+            )
+            .unwrap();
+        }
 
         writeln!(
             out,

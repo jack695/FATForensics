@@ -236,7 +236,7 @@ impl Mbr {
 /// - Prints the MBR sector range.
 /// - Iterates through the partition table entries and prints their sector ranges.
 impl LayoutDisplay for Mbr {
-    fn display_layout(&self, _: u64, indent: u8) -> String {
+    fn display_layout(&self, indent: u8) -> String {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());
 
