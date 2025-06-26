@@ -1,5 +1,7 @@
-mod bpb_error;
+mod bpb;
 mod fat;
+mod fat_error;
+mod fat_type;
 
-pub use bpb_error::BPBError;
 pub use fat::FATVol;
+pub use fat_error::FATError;

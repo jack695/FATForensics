@@ -9,7 +9,7 @@ use thiserror::Error;
 
 /// Errors that can occur during BPB parsing and validation.
 #[derive(Error, Debug)]
-pub enum BPBError {
+pub enum FATError {
     /// The first three bytes of a FAT volume must contain a valid x86 jump instruction.
     #[error("Invalid jump instruction `{0}`")]
     InvalidJmp(String),
@@ -73,9 +73,9 @@ pub enum BPBError {
     UnsupportedFATType(String),
 }
 
-/// Converts standard I/O errors into BPBError.
-impl From<io::Error> for BPBError {
+/// Converts standard I/O errors into FATError.
+impl From<io::Error> for FATError {
     fn from(err: io::Error) -> Self {
-        BPBError::IOError(err)
+        FATError::IOError(err)
     }
 }
