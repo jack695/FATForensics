@@ -18,6 +18,8 @@ pub enum Command {
     Partition(u8),
     /// Skip the MBP validation
     Skip,
+    /// Write a file to a given sector.
+    Write((String, u64)),
     /// Command for an unknown input, encapsulating the raw input as a `String`.
     Unknown(String),
     /// Command for invalid input, encapsulating an error message as a `String`.
@@ -38,6 +40,7 @@ impl Command {
     /// - `Command::Print` if the input is "print".
     /// - `Command::Part` if the input is "part".
     /// - `Command::Skip` if the input is "skip".
+    /// - `Command::Write` if the input is "write".
     /// - `Command::Unknown` if the input does not match any known command.
     /// - `Command::Invalid` if the input is "open" but missing an argument.
     /// - `Command::Empty` if the input is empty or contains only whitespace.
@@ -64,6 +67,29 @@ impl Command {
                 )),
             },
             Some("skip") => Command::Skip,
+            Some("write") => {
+                // Get the filepath
+                let filepath = match parts.next() {
+                    Some(arg) => arg,
+                    None => {
+                        return Command::Invalid(String::from(
+                            "Missing arg: 'write' expects the file and the starting sector to write it.",
+                        ));
+                    }
+                };
+
+                match parts.next() {
+                    Some(arg) => match arg.parse::<u64>() {
+                        Ok(sector) => Command::Write((filepath.to_string(), sector)),
+                        Err(_) => Command::Invalid(String::from(
+                            "Arg parsing error: 'write' wan't extract the starting sector.",
+                        )),
+                    },
+                    None => Command::Invalid(String::from(
+                        "Missing arg: 'write' expects the file and the starting sector to write it.",
+                    )),
+                }
+            }
             Some(other) => Command::Unknown(other.to_string()),
             None => Command::Empty,
         }

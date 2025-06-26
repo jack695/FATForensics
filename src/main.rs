@@ -5,6 +5,7 @@
 
 use fat_forensics::commands::Command;
 use fat_forensics::partitioning::Disk;
+use fat_forensics::utils::write_file_at;
 use std::io::{self, Write};
 
 /// Represents the runtime state of the program.
@@ -72,6 +73,22 @@ fn main() {
                 }
             }
             Command::Skip => run_state.bpb_validation = false,
+            Command::Write((file_path, sector)) => match &mut run_state.disk {
+                Some(disk) => {
+                    match write_file_at(
+                        disk.file(),
+                        sector * run_state.sector_size as u64,
+                        &file_path.as_str(),
+                        run_state.sector_size,
+                    ) {
+                        Ok(()) => println!("Write succeeded!"),
+                        Err(err) => eprintln!("Write failed: {}", err),
+                    }
+                }
+                None => {
+                    eprintln!("Open disk image first");
+                }
+            },
             Command::Unknown(s) => eprintln!("Unknown command: {:?}", s),
             Command::Invalid(s) => eprintln!("{s}"),
             Command::Empty => {}

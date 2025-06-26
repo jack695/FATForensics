@@ -30,6 +30,8 @@ enum Volume {
 
 /// Represents a disk image with its partition table and volumes.
 pub struct Disk {
+    /// The open disk image file.
+    file: File,
     /// The partition table found on the disk
     part_table: PartTable,
     /// List of volumes found on the disk, with their starting sector offsets
@@ -53,7 +55,7 @@ impl Disk {
     /// - Returns `DiskError::Mbr` if the MBR cannot be parsed
     /// - Individual volume parsing errors are logged but don't cause function failure
     pub fn from_file(path: &str, sector_size: usize, validation: bool) -> Result<Self, DiskError> {
-        let mut f = File::open(path)?;
+        let mut f = File::options().read(true).write(true).open(path)?;
 
         let mbr = Mbr::from_file(&mut f, sector_size)?;
 
@@ -74,6 +76,7 @@ impl Disk {
         }
 
         let disk = Disk {
+            file: f,
             part_table: PartTable::Mbr(mbr),
             volumes: vol,
         };
@@ -109,5 +112,13 @@ impl Disk {
     /// - The count of successfully parsed volumes
     pub fn vol_count(&self) -> usize {
         self.volumes.len()
+    }
+
+    /// Returns open disk image file.
+    ///
+    /// # Returns
+    /// - The open disk image file.
+    pub fn file(&mut self) -> &mut File {
+        &mut self.file
     }
 }
