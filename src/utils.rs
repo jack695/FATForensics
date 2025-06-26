@@ -54,14 +54,29 @@ pub fn write_at(disk: &mut File, offset: u64, data: &Vec<u8>) -> io::Result<()> 
 ///
 /// - `disk`: A mutable reference to the file to write to.
 /// - `offset`: The offset in bytes where the data will be written.
+/// - `path`: The path to the file to write into the disk.
+/// - `sector_size`: The size in bytes of a sector.
+/// - `limit`: The byte offset after which writing should be forbidden.
 pub fn write_file_at(
     disk: &mut File,
     offset: u64,
     path: &str,
     sector_size: usize,
+    limit: u64,
 ) -> io::Result<()> {
     let mut f = File::open(path)?;
     let f_len = f.metadata().unwrap().len();
+
+    // Check the file wouldn't cross the limit
+    if limit > 0 && offset + f_len > limit {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "Cannot write the {}-byte long file starting from {} without crossing the limit {}.",
+                f_len, offset, limit
+            ),
+        ));
+    }
 
     for s in (0..f_len).step_by(sector_size) {
         let mut v: Vec<u8> = vec![0; sector_size];
