@@ -23,18 +23,21 @@ enum PartTable {
 
 /// Represents different types of volumes that can be found in partitions.
 /// Currently only FAT32 is supported.
-enum Volume {
+pub enum Volume {
     FAT32(FATVol),
+    Unsupported,
 }
 
 /// Represents a disk image with its partition table and volumes.
 pub struct Disk {
     /// The open disk image file.
-    file: File,
+    file_path: String,
     /// The partition table found on the disk
     part_table: PartTable,
     /// List of volumes found on the disk, with their starting sector offsets
     volumes: Vec<Volume>,
+    /// The size in bytes of a sector
+    sector_size: usize,
 }
 
 impl Disk {
@@ -81,9 +84,10 @@ impl Disk {
         }
 
         let disk = Disk {
-            file: f,
+            file_path: path.to_string(),
             part_table: PartTable::Mbr(mbr),
             volumes: vol,
+            sector_size: sector_size,
         };
 
         Ok(disk)
@@ -107,6 +111,9 @@ impl Disk {
                 Volume::FAT32(vol) => {
                     print!("\n{}", vol.display_layout(indent + 3))
                 }
+                Volume::Unsupported => {
+                    print!("\nUnsupported Volume Type.\n")
+                }
             }
         }
     }
@@ -119,11 +126,27 @@ impl Disk {
         self.volumes.len()
     }
 
-    /// Returns open disk image file.
+    /// Returns the disk image file path.
     ///
     /// # Returns
-    /// - The open disk image file.
-    pub fn file(&mut self) -> &mut File {
-        &mut self.file
+    /// - The disk image file path.
+    pub fn file_path(&self) -> &str {
+        &self.file_path
+    }
+
+    /// Returns the list of volumes.
+    ///
+    /// # Returns
+    /// - The list of volumes
+    pub fn volumes(&self) -> &Vec<Volume> {
+        &self.volumes
+    }
+
+    /// Returns the size of a sector.
+    ///
+    /// # Returns
+    /// - The size of a sector.
+    pub fn sector_size(&self) -> usize {
+        self.sector_size
     }
 }

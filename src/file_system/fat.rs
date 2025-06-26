@@ -7,13 +7,13 @@
 
 use binread::{BinRead, BinReaderExt};
 use std::fmt;
-use std::fmt::Write;
+use std::fmt::Write as FmtWrite;
 use std::fs::File;
-use std::io::Cursor;
+use std::io;
 use std::vec;
 
 use super::bpb_error::BPBError;
-use crate::traits::LayoutDisplay;
+use crate::traits::{LayoutDisplay, SlackWriter};
 use crate::utils;
 
 /// Represents the different types of FAT filesystems.
@@ -82,6 +82,26 @@ impl FATVol {
             end: start + sector_cnt,
         })
     }
+
+    pub fn start(&self) -> u32 {
+        self.start
+    }
+
+    fn rsvd_start(&self) -> u32 {
+        self.start()
+    }
+
+    fn fat_start(&self) -> u32 {
+        self.rsvd_start() + u32::from(self.bpb.rsvd_sec_cnt)
+    }
+
+    fn data_start(&self) -> u32 {
+        self.fat_start() + self.bpb.fat_sz() * self.bpb.num_fat as u32
+    }
+
+    fn data_end(&self) -> u32 {
+        self.data_start() + self.bpb.cluster_count() * self.bpb.sec_per_clus as u32
+    }
 }
 
 /// Implements the LayoutDisplay trait for BPB
@@ -89,11 +109,6 @@ impl LayoutDisplay for FATVol {
     fn display_layout(&self, indent: u8) -> String {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());
-
-        let rsvd_start = self.start;
-        let fat_start = self.start + u32::from(self.bpb.rsvd_sec_cnt);
-        let data_start = fat_start + self.bpb.fat_sz() * self.bpb.num_fat as u32;
-        let data_end = data_start + self.bpb.cluster_count() * self.bpb.sec_per_clus as u32;
 
         writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
         writeln!(
@@ -112,11 +127,15 @@ impl LayoutDisplay for FATVol {
         writeln!(
             out,
             "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-            indent, "Reserved", rsvd_start, fat_start, "Boot + Reserved"
+            indent,
+            "Reserved",
+            self.rsvd_start(),
+            self.fat_start(),
+            "Boot + Reserved"
         )
         .unwrap();
         for i in 0..self.bpb.num_fat {
-            let fat_i_start = fat_start + i as u32 * self.bpb.fat_sz();
+            let fat_i_start = self.fat_start() + i as u32 * self.bpb.fat_sz();
             let fat_i_end = fat_i_start + self.bpb.fat_sz();
             writeln!(
                 out,
@@ -132,14 +151,22 @@ impl LayoutDisplay for FATVol {
         writeln!(
             out,
             "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-            indent, "Data", data_start, data_end, "Cluster Data"
+            indent,
+            "Data",
+            self.data_start(),
+            self.data_end(),
+            "Cluster Data"
         )
         .unwrap();
-        if data_end < self.end {
+        if self.data_end() < self.end {
             writeln!(
                 out,
                 "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
-                indent, "", data_end, self.end, "Volume Slack"
+                indent,
+                "",
+                self.data_end(),
+                self.end,
+                "Volume Slack"
             )
             .unwrap();
         }
@@ -152,6 +179,32 @@ impl LayoutDisplay for FATVol {
         .unwrap();
 
         out
+    }
+}
+
+impl SlackWriter for FATVol {
+    fn write_to_volume_slack<T: io::Write + io::Seek>(
+        &self,
+        writer: &mut T,
+        data: &[u8],
+    ) -> io::Result<()> {
+        let slack_sector_cnt = self.end - self.data_end();
+        if (slack_sector_cnt * self.bpb.bytes_per_sec as u32) < data.len() as u32 {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!(
+                    "Volume slack space ({} sector(s)) isn't large enough to write {} bytes.",
+                    slack_sector_cnt,
+                    data.len()
+                ),
+            ));
+        }
+
+        writer.seek(std::io::SeekFrom::Start(
+            (self.data_end() * self.bpb.bytes_per_sec as u32).into(),
+        ))?;
+        writer.write_all(data)?;
+        Ok(())
     }
 }
 
@@ -251,7 +304,7 @@ impl BPB {
         let mut buf = vec![0; sector_size];
         utils::read_sector(file, sector.into(), sector_size, &mut buf)?;
 
-        let mut reader = Cursor::new(buf);
+        let mut reader = io::Cursor::new(buf);
         let bpb: BPB = reader.read_be().unwrap();
 
         if validate { bpb.validate() } else { Ok(bpb) }
