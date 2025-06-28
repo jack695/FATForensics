@@ -64,8 +64,13 @@ impl FATVol {
         self.rsvd_start() + u32::from(self.bpb.rsvd_sec_cnt)
     }
 
-    fn data_start(&self) -> u32 {
+    fn root_start(&self) -> u32 {
         self.fat_start() + self.bpb.fat_sz() * self.bpb.num_fat as u32
+    }
+
+    fn data_start(&self) -> u32 {
+        self.root_start()
+            + (self.bpb.root_ent_cnt as u32 * 32).div_ceil(self.bpb.bytes_per_sec as u32)
     }
 
     fn data_end(&self) -> u32 {
@@ -114,6 +119,18 @@ impl LayoutDisplay for FATVol {
                 fat_i_start,
                 fat_i_end,
                 "FAT Tables"
+            )
+            .unwrap();
+        }
+        if self.bpb.fat_type() != FATType::FAT32 {
+            writeln!(
+                out,
+                "{}│{:<12}│{:<12}│{:<12}│{:<16}│",
+                indent,
+                "Root Dir",
+                self.root_start(),
+                self.data_start(),
+                "Root Directory"
             )
             .unwrap();
         }
