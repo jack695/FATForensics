@@ -1,4 +1,4 @@
-//! FAT32 BPB structure.
+//! FAT BPB structure.
 //!
 //! This module implements:
 //! - BIOS Parameter Block (BPB) parsing and validation
@@ -35,7 +35,7 @@ pub struct BPB {
     /// Number of FAT copies (typically 2 for redundancy)
     pub(super) num_fat: u8,
     /// Maximum number of root directory entries (0 for FAT32)
-    root_ent_cnt: u16,
+    pub(super) root_ent_cnt: u16,
     /// Total sectors for volumes < 32MB (0 for FAT32)
     tot_sec_16: u16,
     /// Media descriptor (0xF8 for fixed disk)
@@ -59,7 +59,7 @@ pub struct BPB {
     /// Filesystem version (should be 0:0)
     fs_ver: u16,
     /// First cluster of root directory (typically 2)
-    root_clus: u32,
+    pub(super) root_clus: u32,
     /// Sector number of FSINFO structure
     fs_info: u16,
     /// Sector number of backup boot sector
@@ -168,7 +168,7 @@ impl BPB {
     ///   - `FAT12` if cluster count < 4085
     ///   - `FAT16` if cluster count < 65525
     ///   - `FAT32` if cluster count >= 65525
-    fn fat_type(&self) -> FATType {
+    pub(super) fn fat_type(&self) -> FATType {
         let clus_cnt = self.cluster_count();
 
         if clus_cnt < 4085 {

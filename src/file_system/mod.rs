@@ -1,4 +1,5 @@
 mod bpb;
+mod dir_entry;
 mod fat;
 mod fat_error;
 mod fat_type;

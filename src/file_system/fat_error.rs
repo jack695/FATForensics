@@ -71,6 +71,10 @@ pub enum FATError {
     /// The detected FAT type is not supported (only FAT32 is supported).
     #[error("Unsupported FAT type: `{0}`")]
     UnsupportedFATType(String),
+
+    /// The file was not found
+    #[error("File not found")]
+    FileNotFound,
 }
 
 /// Converts standard I/O errors into FATError.

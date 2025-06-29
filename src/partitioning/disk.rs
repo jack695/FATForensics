@@ -66,7 +66,7 @@ impl Disk {
             if let PTType::LBAFat32 = pt_entry.pt_type() {
                 {
                     match FATVol::from_file(
-                        &mut f,
+                        path,
                         pt_entry.lba_start(),
                         pt_entry.sector_cnt(),
                         validation,
