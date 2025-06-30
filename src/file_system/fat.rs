@@ -5,16 +5,17 @@
 
 use std::fmt::Write as FmtWrite;
 use std::fs::File;
-use std::io;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
+use std::{io, result};
 
 use super::bpb::BPB;
 use super::dir_entry::DirEntry;
 use super::fat_error::FATError;
 use super::fat_type::FATType;
+use crate::file_system::dir_entry;
 use crate::traits::{LayoutDisplay, SlackWriter};
-use crate::utils::{read_sector, u32_at};
+use crate::utils::{read_sector, u32_at, write_at};
 
 /// Structure for a FAT volume.
 ///
@@ -67,7 +68,7 @@ impl FATVol {
     ///
     /// # Returns
     /// - `u32`: The first cluster number of the file if found, otherwise `0`.
-    pub fn find_file(&self, file_path: &Path) -> Result<u32, FATError> {
+    pub fn find_file(&self, file_path: &Path) -> Result<DirEntry, FATError> {
         if file_path.components().count() == 0 {
             return Err(FATError::FileNotFound);
         }
@@ -82,7 +83,11 @@ impl FATVol {
         self.find_file_rec(file_path, root_dir_cluster)
     }
 
-    fn find_file_rec(&self, file_path: &Path, fst_cluster: u32) -> Result<u32, FATError> {
+    fn find_file_rec(
+        &self,
+        file_path: &Path,
+        fst_cluster: u32,
+    ) -> Result<dir_entry::DirEntry, FATError> {
         let mut parts = file_path.components();
         let current_part = parts.next().unwrap();
         let remaining: PathBuf = parts.clone().collect();
@@ -106,7 +111,7 @@ impl FATVol {
                 if dir_entry.is_dir() {
                     return self.find_file_rec(remaining.as_path(), dir_entry.cluster_number());
                 } else {
-                    return Ok(dir_entry.cluster_number());
+                    return Ok(dir_entry.clone());
                 }
             }
         }
@@ -115,6 +120,8 @@ impl FATVol {
     }
 
     pub fn list_dir(&self, first_cluster: u32) -> io::Result<Vec<DirEntry>> {
+        assert!(first_cluster >= 2);
+
         let clusters = self.list_clusters(first_cluster);
         let mut dir_entries = vec![];
 
@@ -152,6 +159,8 @@ impl FATVol {
     }
 
     fn list_clusters(&self, cluster: u32) -> Vec<u32> {
+        assert!(cluster >= 2);
+
         let mut all_clusters = vec![];
         let mut cluster = cluster;
 
@@ -342,23 +351,62 @@ impl SlackWriter for FATVol {
         &self,
         writer: &mut T,
         data: &[u8],
-    ) -> io::Result<()> {
+    ) -> result::Result<(), FATError> {
         let slack_sector_cnt = self.end - self.data_end();
         if (slack_sector_cnt * self.bpb.bytes_per_sec as u32) < data.len() as u32 {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!(
-                    "Volume slack space ({} sector(s)) isn't large enough to write {} bytes.",
-                    slack_sector_cnt,
-                    data.len()
-                ),
-            ));
+            return Err(FATError::InsufficientSlackSpace {
+                free: slack_sector_cnt * self.bpb.bytes_per_sec as u32,
+                needed: data.len() as u32,
+            });
         }
 
         writer.seek(std::io::SeekFrom::Start(
             (self.data_end() * self.bpb.bytes_per_sec as u32).into(),
         ))?;
         writer.write_all(data)?;
+        Ok(())
+    }
+
+    fn write_to_file_slack<T: io::Write + io::Seek>(
+        &self,
+        disk_file: &mut T,
+        file_path: &Path,
+        data: &[u8],
+    ) -> result::Result<(), FATError> {
+        // Checks the file isn't empty and has at least one allocated cluster
+        let entry = self.find_file(file_path)?;
+        if entry.file_size == 0 && entry.cluster_number() == 0 {
+            return Err(FATError::InsufficientSlackSpace {
+                free: 0,
+                needed: data.len() as u32,
+            });
+        }
+
+        let clusters = self.list_clusters(entry.cluster_number());
+        let slack_byte_size =
+            clusters.len() * self.bpb.sec_per_clus as usize * self.bpb.bytes_per_sec as usize
+                - entry.file_size as usize;
+        let cluster_size = self.bpb.sec_per_clus as u32 * self.bpb.bytes_per_sec as u32;
+
+        if data.len() > slack_byte_size {
+            return Err(FATError::InsufficientSlackSpace {
+                free: slack_byte_size as u32,
+                needed: data.len() as u32,
+            });
+        }
+
+        // Note: Technically, we could allocate extra clusters for a file to extend the slack space.
+        // However, this is not supported for now.
+        if data.len().div_ceil(cluster_size as usize) > 1 {
+            return Err(FATError::UnsupportedFeature(
+                "Writing data to a file slack which spans over more than one cluster is not currently supported.".to_string(),
+            ));
+        }
+        let offset = (self.clus_to_sector(*clusters.last().unwrap()) as u64)
+            * self.bpb.bytes_per_sec as u64
+            + (entry.file_size as u64) % (cluster_size as u64);
+        write_at(disk_file, offset, data)?;
+
         Ok(())
     }
 }

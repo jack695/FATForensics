@@ -49,7 +49,7 @@ pub struct DirEntry {
     /// Low 16 bits of first cluster number
     fst_clus_lo: u16,
     /// File size in bytes (0 for directories)
-    file_size: u32,
+    pub(super) file_size: u32,
 }
 
 impl DirEntry {

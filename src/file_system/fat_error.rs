@@ -75,6 +75,14 @@ pub enum FATError {
     /// The file was not found
     #[error("File not found")]
     FileNotFound,
+
+    /// Insufficient slack space
+    #[error("Insufficient slack space: {free} free bytes for storing {needed} bytes.")]
+    InsufficientSlackSpace { free: u32, needed: u32 },
+
+    /// Unsupported feature
+    #[error("Unsupported feature.")]
+    UnsupportedFeature(String),
 }
 
 /// Converts standard I/O errors into FATError.

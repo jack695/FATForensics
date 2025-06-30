@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom};
 use std::{fs, io};
 
 /// Reads a specific sector from a file into a buffer.
@@ -43,7 +43,7 @@ pub fn read_sector(
 /// - `disk`: A mutable reference to the file to write to.
 /// - `offset`: The offset in bytes where the data will be written.
 /// - `data`: A reference to a vector containing the data to be written.
-pub fn write_at(disk: &mut File, offset: u64, data: &Vec<u8>) -> io::Result<()> {
+pub fn write_at<T: io::Write + io::Seek>(disk: &mut T, offset: u64, data: &[u8]) -> io::Result<()> {
     disk.seek(SeekFrom::Start(offset))?;
     disk.write_all(data)
 }
@@ -57,8 +57,8 @@ pub fn write_at(disk: &mut File, offset: u64, data: &Vec<u8>) -> io::Result<()> 
 /// - `path`: The path to the file to write into the disk.
 /// - `sector_size`: The size in bytes of a sector.
 /// - `limit`: The byte offset after which writing should be forbidden.
-pub fn write_file_at(
-    disk: &mut File,
+pub fn write_file_at<T: io::Write + io::Seek>(
+    disk: &mut T,
     offset: u64,
     path: &str,
     sector_size: usize,

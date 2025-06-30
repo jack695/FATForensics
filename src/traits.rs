@@ -1,6 +1,11 @@
 //! Declaration of traits reused across the code.
 
-use std::io::{Result, Seek, Write};
+use std::{
+    io::{Seek, Write},
+    path::Path,
+};
+
+use crate::file_system::FATError;
 
 /// Implementation of the LayoutDisplay trait.
 /// It is used to display the layout of a given structure such as a disk or partition.
@@ -9,5 +14,16 @@ pub trait LayoutDisplay {
 }
 
 pub trait SlackWriter {
-    fn write_to_volume_slack<T: Write + Seek>(&self, writer: &mut T, data: &[u8]) -> Result<()>;
+    fn write_to_volume_slack<T: Write + Seek>(
+        &self,
+        writer: &mut T,
+        data: &[u8],
+    ) -> Result<(), FATError>;
+
+    fn write_to_file_slack<T: Write + Seek>(
+        &self,
+        writer: &mut T,
+        file_path: &Path,
+        data: &[u8],
+    ) -> Result<(), FATError>;
 }

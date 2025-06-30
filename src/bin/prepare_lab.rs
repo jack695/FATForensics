@@ -10,6 +10,7 @@ use fat_forensics::utils::write_file_at;
 use std::env;
 use std::fs;
 use std::fs::File;
+use std::path::Path;
 
 const SECTOR_SIZE: usize = 512;
 
@@ -70,6 +71,7 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
     match flag_idx {
         0 => hide_flag_after_mbr(flag_file_path, &mut disk_file, fat_vol, &disk),
         1 => hide_flag_in_volume_slack(flag_file_path, &mut disk_file, fat_vol),
+        2 => hide_flag_in_file_slack(flag_file_path, &mut disk_file, fat_vol),
         _ => {
             println!("Unsupported flag count to hide: {}", flag_idx);
             std::process::exit(1);
@@ -93,6 +95,17 @@ fn hide_flag_in_volume_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FA
 
     fat_vol
         .write_to_volume_slack(disk, &data)
+        .unwrap_or_else(|e| {
+            eprintln!("Failed to write to volume slack: {}", e);
+            std::process::exit(1);
+        });
+}
+
+fn hide_flag_in_file_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FATVol) {
+    let data: Vec<u8> = fs::read(flag_file_path).expect("Failed to read flag file.");
+
+    fat_vol
+        .write_to_file_slack(disk, Path::new("1/t.txt"), &data)
         .unwrap_or_else(|e| {
             eprintln!("Failed to write to volume slack: {}", e);
             std::process::exit(1);
