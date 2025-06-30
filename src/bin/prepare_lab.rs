@@ -10,6 +10,7 @@ use fat_forensics::utils::write_file_at;
 use std::env;
 use std::fs;
 use std::fs::File;
+use std::ops::Div;
 use std::path::Path;
 
 const SECTOR_SIZE: usize = 512;
@@ -72,6 +73,7 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
         0 => hide_flag_after_mbr(flag_file_path, &mut disk_file, fat_vol, &disk),
         1 => hide_flag_in_volume_slack(flag_file_path, &mut disk_file, fat_vol),
         2 => hide_flag_in_file_slack(flag_file_path, &mut disk_file, fat_vol),
+        3 => hide_file_in_bad_clusters(flag_file_path, &mut disk_file, fat_vol),
         _ => {
             println!("Unsupported flag count to hide: {}", flag_idx);
             std::process::exit(1);
@@ -110,4 +112,18 @@ fn hide_flag_in_file_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FATV
             eprintln!("Failed to write to volume slack: {}", e);
             std::process::exit(1);
         });
+}
+
+fn hide_file_in_bad_clusters(flag_file_path: &str, disk: &mut File, fat_vol: &FATVol) {
+    let data: Vec<u8> = fs::read(flag_file_path).expect("Failed to read flag file.");
+
+    let cluster_cnt = (data.len() as u32).div_ceil(fat_vol.cluster_size());
+    let chain_start = fat_vol.mark_as_bad(cluster_cnt).unwrap_or_else(|e| {
+        eprintln!("Failed to mark the file's clusters as bad: {}", e);
+        std::process::exit(1);
+    });
+
+    let offset = fat_vol.clus_to_sector(chain_start) as u64 * SECTOR_SIZE as u64;
+    let limit = offset + cluster_cnt as u64 * fat_vol.cluster_size() as u64;
+    write_file_at(disk, offset, flag_file_path, SECTOR_SIZE, limit).unwrap()
 }

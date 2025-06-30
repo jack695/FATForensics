@@ -191,6 +191,83 @@ impl FATVol {
         ) & 0x0FFFFFFF
     }
 
+    pub fn mark_as_bad(&self, cluster_cnt: u32) -> Result<u32, FATError> {
+        let mut start = 2;
+        let mut i = 0;
+
+        while start + i < self.bpb.cluster_count() + 2 {
+            if self.get_next_cluster(start + i) != 0 || !self.is_zero_cluster(start + i)? {
+                start = start + i + 1;
+                i = 0;
+            } else {
+                i += 1;
+            }
+
+            if i == cluster_cnt {
+                // Found a list of `cluster_cnt` free clusters
+                for cluster in start..start + cluster_cnt {
+                    self.update_fat_entry(cluster, self.bad_cluster_marker())?;
+                }
+
+                return Ok(start);
+            }
+        }
+
+        Err(FATError::NoFreeClusterChain(cluster_cnt))
+    }
+
+    fn is_zero_cluster(&self, cluster: u32) -> io::Result<bool> {
+        let mut buffer = Vec::new();
+        let mut disk_file = File::open(&self.disk_path).unwrap();
+
+        for i in 0..self.bpb.sec_per_clus {
+            read_sector(
+                &mut disk_file,
+                self.clus_to_sector(cluster) as u64 + i as u64,
+                self.bpb.bytes_per_sec as usize,
+                &mut buffer,
+            )?;
+
+            for j in 0..buffer.len() {
+                if buffer[j] != 0 {
+                    return Ok(false);
+                }
+            }
+        }
+
+        Ok(true)
+    }
+
+    pub fn cluster_size(&self) -> u32 {
+        return self.bpb.bytes_per_sec as u32 * self.bpb.sec_per_clus as u32;
+    }
+
+    fn update_fat_entry(&self, cluster_nb: u32, value: u32) -> io::Result<()> {
+        // Prepare the data to write
+        let mut data: Vec<u8> = Vec::new();
+        let mut mask = 0xff000000;
+        for i in 1..5 {
+            data.push(((value & mask) >> (32 - i * 8)) as u8);
+            mask >>= 8;
+        }
+
+        // Update the entry for every fat structure
+        for i in 0..self.bpb.num_fat {
+            let off = (self.fat_start() as u64 + i as u64 * self.bpb.fat_sz() as u64)
+                * self.bpb.bytes_per_sec as u64
+                + (cluster_nb as u64 * self.fat_entry_bit_sz() as u64 / 8);
+
+            let mut disk_file = File::options()
+                .write(true)
+                .read(true)
+                .open(&self.disk_path)?;
+
+            write_at(&mut disk_file, off, &data)?
+        }
+
+        Ok(())
+    }
+
     fn is_eof(&self, cluster: u32) -> bool {
         match self.bpb.fat_type() {
             FATType::FAT12 => cluster >= 0x0FF8,
@@ -199,11 +276,11 @@ impl FATVol {
         }
     }
 
-    fn is_bad_cluster(&self, cluster: u32) -> bool {
+    fn bad_cluster_marker(&self) -> u32 {
         match self.bpb.fat_type() {
-            FATType::FAT12 => cluster == 0x0FF7,
-            FATType::FAT16 => cluster == 0xFFF7,
-            FATType::FAT32 => cluster == 0x0FFFFFF7,
+            FATType::FAT12 => 0x0FF7,
+            FATType::FAT16 => 0xFFF7,
+            FATType::FAT32 => 0x0FFFFFF7,
         }
     }
 
@@ -226,7 +303,7 @@ impl FATVol {
         }
     }
 
-    fn clus_to_sector(&self, cluster: u32) -> u32 {
+    pub fn clus_to_sector(&self, cluster: u32) -> u32 {
         self.data_start() + (cluster - 2) * self.bpb.sec_per_clus as u32
     }
 
@@ -246,7 +323,7 @@ impl FATVol {
         self.fat_start() + self.bpb.fat_sz() * self.bpb.num_fat as u32
     }
 
-    fn data_start(&self) -> u32 {
+    pub fn data_start(&self) -> u32 {
         self.root_start()
             + (self.bpb.root_ent_cnt as u32 * 32).div_ceil(self.bpb.bytes_per_sec as u32)
     }

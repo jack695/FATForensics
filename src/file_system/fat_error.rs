@@ -80,6 +80,10 @@ pub enum FATError {
     #[error("Insufficient slack space: {free} free bytes for storing {needed} bytes.")]
     InsufficientSlackSpace { free: u32, needed: u32 },
 
+    /// No chain of free clusters
+    #[error("No chain of `{0}` free clusters found.")]
+    NoFreeClusterChain(u32),
+
     /// Unsupported feature
     #[error("Unsupported feature.")]
     UnsupportedFeature(String),
