@@ -56,7 +56,7 @@ fn main() {
                         run_state.disk = Some(disk);
                     }
                     Err(err) => {
-                        error!("{}", err);
+                        error!("{err}");
                     }
                 }
             }
@@ -64,7 +64,7 @@ fn main() {
             Command::Print => match &run_state.disk {
                 Some(disk) => {
                     if let Err(e) = disk.print_layout(3) {
-                        error!("Print layout error: {}", e);
+                        error!("Print layout error: {e}");
                     }
                 }
                 None => error!("Open disk image first"),
@@ -89,7 +89,7 @@ fn main() {
             Command::Write((file_path, sector)) => {
                 write_file_to_disk(&mut run_state, Path::new(&file_path), sector)
             }
-            Command::Unknown(s) => error!("Unknown command: {:?}", s),
+            Command::Unknown(s) => error!("Unknown command: {s:?}"),
             Command::Invalid(s) => error!("{s}"),
             Command::Empty => {}
         }
@@ -113,7 +113,7 @@ fn write_file_to_disk(run_state: &mut RunState, file_path: &Path, sector: u64) {
     {
         Ok(file) => file,
         Err(e) => {
-            error!("Failed to open disk image file: {}", e);
+            error!("Failed to open disk image file: {e}");
             return;
         }
     };
@@ -151,6 +151,6 @@ fn write_file_to_disk(run_state: &mut RunState, file_path: &Path, sector: u64) {
         0,
     ) {
         Ok(()) => println!("Write succeeded!"),
-        Err(err) => error!("Write failed: {}", err),
+        Err(err) => error!("Write failed: {err}"),
     }
 }

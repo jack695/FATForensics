@@ -25,10 +25,7 @@ pub fn read_sector<T: io::Read + io::Seek>(
     file.seek(io::SeekFrom::Start(sector_size as u64 * sector))?;
 
     file.read_exact(buffer).map_err(|err| {
-        io::Error::new(
-            err.kind(),
-            format!("Failed to read sector {}: {}", sector, err),
-        )
+        io::Error::new(err.kind(), format!("Failed to read sector {sector}: {err}"))
     })?;
 
     Ok(())
@@ -66,8 +63,7 @@ pub fn write_file_at<T: io::Write + io::Seek, S: io::Read>(
     // Check the file wouldn't cross the limit
     if limit > 0 && offset + file_len > limit {
         return Err(std::io::Error::other(format!(
-            "Cannot write the {}-byte long file starting from {} without crossing the limit {}.",
-            file_len, offset, limit
+            "Cannot write the {file_len}-byte long file starting from {offset} without crossing the limit {limit}.",
         )));
     }
 

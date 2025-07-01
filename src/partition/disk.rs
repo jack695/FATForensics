@@ -85,8 +85,7 @@ impl Disk {
                         }
                         Err(error) => {
                             return Err(DiskError::ParsingError(format!(
-                                "Error while reading partition #{}: {}",
-                                part_idx, error
+                                "Error while reading partition #{part_idx}: {error}"
                             )));
                         }
                     }

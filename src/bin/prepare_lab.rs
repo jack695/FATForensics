@@ -30,7 +30,7 @@ fn main() {
 
     // Open the disk
     let disk = Disk::from_file(Path::new(&disk_path), SECTOR_SIZE, false).unwrap_or_else(|e| {
-        error!("Error: {}", e);
+        error!("Error: {e}");
         std::process::exit(1);
     });
 
@@ -75,7 +75,7 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
         2 => hide_flag_in_file_slack(flag_file_path, &mut disk_file, fat_vol),
         3 => hide_file_in_bad_clusters(flag_file_path, &mut disk_file, fat_vol),
         _ => {
-            println!("Unsupported flag count to hide: {}", flag_idx);
+            println!("Unsupported flag count to hide: {flag_idx}");
             std::process::exit(1);
         }
     }
@@ -102,7 +102,7 @@ fn hide_flag_in_volume_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FA
     fat_vol
         .write_to_volume_slack(disk, &data)
         .unwrap_or_else(|e| {
-            error!("Failed to write to volume slack: {}", e);
+            error!("Failed to write to volume slack: {e}");
             std::process::exit(1);
         });
 }
@@ -113,7 +113,7 @@ fn hide_flag_in_file_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FATV
     fat_vol
         .write_to_file_slack(disk, Path::new("1/t.txt"), &data)
         .unwrap_or_else(|e| {
-            error!("Failed to write to volume slack: {}", e);
+            error!("Failed to write to volume slack: {e}");
             std::process::exit(1);
         });
 }
@@ -123,7 +123,7 @@ fn hide_file_in_bad_clusters(flag_file_path: &str, disk: &mut File, fat_vol: &FA
 
     let cluster_cnt = (data.len() as u32).div_ceil(fat_vol.cluster_size());
     let chain_start = fat_vol.mark_as_bad(cluster_cnt).unwrap_or_else(|e| {
-        error!("Failed to mark the file's clusters as bad: {}", e);
+        error!("Failed to mark the file's clusters as bad: {e}");
         std::process::exit(1);
     });
 

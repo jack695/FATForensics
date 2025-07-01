@@ -29,7 +29,7 @@ impl Display for PTType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             PTType::LBAFat32 => write!(f, "LBA FAT32"),
-            PTType::Unsupported(b) => write!(f, "Unsupported: 0x{:02X}", b),
+            PTType::Unsupported(b) => write!(f, "Unsupported: 0x{b:02X}"),
         }
     }
 }
@@ -96,8 +96,8 @@ impl BootSignature {
 impl fmt::Display for BootSignature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BootSignature::Mbr(sig) => write!(f, "0x{:04X}", sig),
-            BootSignature::Unsupported(sig) => write!(f, "0x{:04X}", sig),
+            BootSignature::Mbr(sig) => write!(f, "0x{sig:04X}"),
+            BootSignature::Unsupported(sig) => write!(f, "0x{sig:04X}"),
         }
     }
 }

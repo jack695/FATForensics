@@ -158,7 +158,7 @@ impl FATVol {
         file.read_exact(&mut buf).map_err(|err| {
             io::Error::new(
                 err.kind(),
-                format!("Failed to read cluster {}: {}", cluster_nb, err),
+                format!("Failed to read cluster {cluster_nb}: {err}"),
             )
         })?;
 
@@ -188,7 +188,7 @@ impl FATVol {
         let sector = self.fat_start()
             + (cluster * self.fat_entry_bit_sz() / 8) / (*self.bpb.bytes_per_sec() as u32);
 
-        let err_msg = format!("Couldn't read sector {}.", sector).to_string();
+        let err_msg = format!("Couldn't read sector {sector}").to_string();
         read_sector(
             &mut file,
             sector.into(),

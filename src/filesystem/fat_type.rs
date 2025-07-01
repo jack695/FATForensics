@@ -24,6 +24,6 @@ impl fmt::Display for FATType {
             FATType::FAT16 => "FAT16",
             FATType::FAT32 => "FAT32",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
