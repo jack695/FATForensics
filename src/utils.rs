@@ -75,10 +75,10 @@ pub fn write_file_at<T: io::Write + io::Seek>(
         )));
     }
 
+    let mut v: Vec<u8> = vec![0; sector_size];
     for s in (0..f_len).step_by(sector_size) {
-        let mut v: Vec<u8> = vec![0; sector_size];
         let bytes_read = f.read(&mut v)?;
-        v.resize(bytes_read, 0);
+        v.truncate(bytes_read);
         write_at(disk, offset + s, &v)?;
     }
 

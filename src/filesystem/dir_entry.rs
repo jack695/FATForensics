@@ -122,11 +122,7 @@ impl DirEntry {
         if ext.is_empty() {
             Ok(name.to_ascii_uppercase())
         } else {
-            Ok(format!(
-                "{}.{}",
-                name.to_ascii_uppercase(),
-                ext.to_ascii_uppercase()
-            ))
+            Ok(format!("{}.{}", name, ext))
         }
     }
 
