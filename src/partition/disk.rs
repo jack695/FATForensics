@@ -63,12 +63,12 @@ impl Disk {
 
         let mut vol = vec![];
         for (part_idx, pt_entry) in mbr.pt_entries().iter().enumerate() {
-            if let PTType::LBAFat32 = pt_entry.pt_type() {
+            if let PTType::LBAFat32 = *pt_entry.pt_type() {
                 {
                     match FATVol::from_file(
                         path,
-                        pt_entry.lba_start(),
-                        pt_entry.sector_cnt(),
+                        *pt_entry.lba_start(),
+                        *pt_entry.sector_cnt(),
                         validation,
                         sector_size,
                     ) {
@@ -76,7 +76,10 @@ impl Disk {
                             vol.push(Volume::FAT32(fat_vol));
                         }
                         Err(error) => {
-                            eprintln!("Error while reading partition #{}: {}", part_idx, error)
+                            return Err(DiskError::ParsingError(format!(
+                                "Error while reading partition #{}: {}",
+                                part_idx, error
+                            )));
                         }
                     }
                 }

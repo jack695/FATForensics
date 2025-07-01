@@ -91,6 +91,10 @@ pub enum FATError {
     /// Parsing error occured during structure initialization
     #[error("BinRead Error: `{0}`")]
     BinReadError(binread::Error),
+
+    /// Invalid cluster number
+    #[error("Invalid cluster number: `{0}`")]
+    InvalidClusterError(u32),
 }
 
 /// Converts standard I/O errors into FATError.

@@ -5,6 +5,7 @@
 //! and contains information such as filename, attributes, timestamps, and cluster allocation.
 
 use binread::{BinRead, BinReaderExt};
+use getset::Getters;
 use std::fmt;
 use std::io;
 
@@ -25,7 +26,7 @@ use crate::filesystem::fat_error::FATError;
 /// # Notes
 /// - Timestamp fields are prefixed with underscore as they're not currently used
 /// - The name field uses the legacy 8.3 format with space padding
-#[derive(BinRead, Debug, Clone)]
+#[derive(BinRead, Debug, Clone, Getters)]
 #[br(little)]
 pub struct DirEntry {
     /// Filename in 8.3 format (8 characters name + 3 characters extension)
@@ -51,7 +52,8 @@ pub struct DirEntry {
     /// Low 16 bits of first cluster number
     fst_clus_lo: u16,
     /// File size in bytes (0 for directories)
-    pub(super) file_size: u32,
+    #[get = "pub(super)"]
+    file_size: u32,
 }
 
 impl DirEntry {

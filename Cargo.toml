@@ -7,3 +7,4 @@ default-run = "main"
 [dependencies]
 binread = "2.2.0"
 thiserror = "2.0.12"
+getset = "0.1"

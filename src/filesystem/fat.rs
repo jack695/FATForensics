@@ -77,7 +77,7 @@ impl FATVol {
         let root_dir_cluster = match fat_type {
             FATType::FAT12 => return Err(FATError::UnsupportedFATType(fat_type.to_string())),
             FATType::FAT16 => return Err(FATError::UnsupportedFATType(fat_type.to_string())),
-            _ => self.bpb.root_clus,
+            _ => *self.bpb.root_clus(),
         };
 
         self.find_file_rec(file_path, root_dir_cluster)
@@ -120,9 +120,13 @@ impl FATVol {
     }
 
     pub fn list_dir(&self, first_cluster: u32) -> Result<Vec<DirEntry>, FATError> {
-        assert!(first_cluster >= 2);
+        match first_cluster {
+            0 => return Err(FATError::InvalidClusterError(0)),
+            1 => return Err(FATError::InvalidClusterError(1)),
+            _ => {}
+        }
 
-        let clusters = self.list_clusters(first_cluster);
+        let clusters = self.list_clusters(first_cluster)?;
         let mut dir_entries = vec![];
 
         for cluster_nb in clusters {
@@ -141,11 +145,11 @@ impl FATVol {
     fn read_cluster(&self, cluster_nb: u32) -> io::Result<Vec<u8>> {
         let mut file = File::open(self.disk_path.as_str()).unwrap();
 
-        let cluster_size = self.bpb.sec_per_clus as u16 * self.bpb.bytes_per_sec;
+        let cluster_size = *self.bpb.sec_per_clus() as u16 * *self.bpb.bytes_per_sec();
         let mut buf: Vec<u8> = vec![0; cluster_size.into()];
 
         file.seek(SeekFrom::Start(
-            (self.bpb.bytes_per_sec as u32 * self.clus_to_sector(cluster_nb)).into(),
+            (*self.bpb.bytes_per_sec() as u32 * self.clus_to_sector(cluster_nb)).into(),
         ))?;
 
         file.read_exact(&mut buf).map_err(|err| {
@@ -158,8 +162,12 @@ impl FATVol {
         Ok(buf)
     }
 
-    fn list_clusters(&self, cluster: u32) -> Vec<u32> {
-        assert!(cluster >= 2);
+    fn list_clusters(&self, cluster: u32) -> Result<Vec<u32>, FATError> {
+        match cluster {
+            0 => return Err(FATError::InvalidClusterError(0)),
+            1 => return Err(FATError::InvalidClusterError(1)),
+            _ => {}
+        }
 
         let mut all_clusters = vec![];
         let mut cluster = cluster;
@@ -168,26 +176,26 @@ impl FATVol {
             all_clusters.push(cluster);
             cluster = self.get_next_cluster(cluster);
         }
-        all_clusters
+        Ok(all_clusters)
     }
 
     fn get_next_cluster(&self, cluster: u32) -> u32 {
         let mut file = File::open(self.disk_path.as_str()).unwrap();
         let mut buf = vec![];
         let sector = self.fat_start()
-            + (cluster * self.fat_entry_bit_sz() / 8) / (self.bpb.bytes_per_sec as u32);
+            + (cluster * self.fat_entry_bit_sz() / 8) / (*self.bpb.bytes_per_sec() as u32);
 
         read_sector(
             &mut file,
             sector.into(),
-            (self.bpb.bytes_per_sec).into(),
+            (*self.bpb.bytes_per_sec()).into(),
             &mut buf,
         )
         .expect(format!("Couldn't read sector {}.", sector).as_str());
 
         u32_at(
             &buf,
-            (cluster * self.fat_entry_bit_sz() / 8 % self.bpb.bytes_per_sec as u32) as usize,
+            (cluster * self.fat_entry_bit_sz() / 8 % *self.bpb.bytes_per_sec() as u32) as usize,
         ) & 0x0FFFFFFF
     }
 
@@ -220,11 +228,11 @@ impl FATVol {
         let mut buffer = Vec::new();
         let mut disk_file = File::open(&self.disk_path).unwrap();
 
-        for i in 0..self.bpb.sec_per_clus {
+        for i in 0..*self.bpb.sec_per_clus() {
             read_sector(
                 &mut disk_file,
                 self.clus_to_sector(cluster) as u64 + i as u64,
-                self.bpb.bytes_per_sec as usize,
+                *self.bpb.bytes_per_sec() as usize,
                 &mut buffer,
             )?;
 
@@ -239,7 +247,7 @@ impl FATVol {
     }
 
     pub fn cluster_size(&self) -> u32 {
-        return self.bpb.bytes_per_sec as u32 * self.bpb.sec_per_clus as u32;
+        return *self.bpb.bytes_per_sec() as u32 * *self.bpb.sec_per_clus() as u32;
     }
 
     fn update_fat_entry(&self, cluster_nb: u32, value: u32) -> io::Result<()> {
@@ -252,9 +260,9 @@ impl FATVol {
         }
 
         // Update the entry for every fat structure
-        for i in 0..self.bpb.num_fat {
+        for i in 0..*self.bpb.num_fat() {
             let off = (self.fat_start() as u64 + i as u64 * self.bpb.fat_sz() as u64)
-                * self.bpb.bytes_per_sec as u64
+                * *self.bpb.bytes_per_sec() as u64
                 + (cluster_nb as u64 * self.fat_entry_bit_sz() as u64 / 8);
 
             let mut disk_file = File::options()
@@ -298,13 +306,13 @@ impl FATVol {
     /// - `u32`: The starting sector of the root directory.
     pub fn root_dir_sector(&self) -> u32 {
         match self.bpb.fat_type() {
-            FATType::FAT32 => self.clus_to_sector(self.bpb.root_clus),
+            FATType::FAT32 => self.clus_to_sector(*self.bpb.root_clus()),
             _ => self.rsvd_start(),
         }
     }
 
     pub fn clus_to_sector(&self, cluster: u32) -> u32 {
-        self.data_start() + (cluster - 2) * self.bpb.sec_per_clus as u32
+        self.data_start() + (cluster - 2) * *self.bpb.sec_per_clus() as u32
     }
 
     pub fn start(&self) -> u32 {
@@ -316,20 +324,20 @@ impl FATVol {
     }
 
     fn fat_start(&self) -> u32 {
-        self.rsvd_start() + u32::from(self.bpb.rsvd_sec_cnt)
+        self.rsvd_start() + u32::from(*self.bpb.rsvd_sec_cnt())
     }
 
     fn root_start(&self) -> u32 {
-        self.fat_start() + self.bpb.fat_sz() * self.bpb.num_fat as u32
+        self.fat_start() + self.bpb.fat_sz() * *self.bpb.num_fat() as u32
     }
 
     pub fn data_start(&self) -> u32 {
         self.root_start()
-            + (self.bpb.root_ent_cnt as u32 * 32).div_ceil(self.bpb.bytes_per_sec as u32)
+            + (*self.bpb.root_ent_cnt() as u32 * 32).div_ceil(*self.bpb.bytes_per_sec() as u32)
     }
 
     fn data_end(&self) -> u32 {
-        self.data_start() + self.bpb.cluster_count() * self.bpb.sec_per_clus as u32
+        self.data_start() + self.bpb.cluster_count() * *self.bpb.sec_per_clus() as u32
     }
 }
 
@@ -363,7 +371,7 @@ impl LayoutDisplay for FATVol {
             "Boot + Reserved"
         )
         .unwrap();
-        for i in 0..self.bpb.num_fat {
+        for i in 0..*self.bpb.num_fat() {
             let fat_i_start = self.fat_start() + i as u32 * self.bpb.fat_sz();
             let fat_i_end = fat_i_start + self.bpb.fat_sz();
             writeln!(
@@ -430,15 +438,15 @@ impl SlackWriter for FATVol {
         data: &[u8],
     ) -> result::Result<(), FATError> {
         let slack_sector_cnt = self.end - self.data_end();
-        if (slack_sector_cnt * self.bpb.bytes_per_sec as u32) < data.len() as u32 {
+        if (slack_sector_cnt * *self.bpb.bytes_per_sec() as u32) < data.len() as u32 {
             return Err(FATError::InsufficientSlackSpace {
-                free: slack_sector_cnt * self.bpb.bytes_per_sec as u32,
+                free: slack_sector_cnt * *self.bpb.bytes_per_sec() as u32,
                 needed: data.len() as u32,
             });
         }
 
         writer.seek(std::io::SeekFrom::Start(
-            (self.data_end() * self.bpb.bytes_per_sec as u32).into(),
+            (self.data_end() * *self.bpb.bytes_per_sec() as u32).into(),
         ))?;
         writer.write_all(data)?;
         Ok(())
@@ -452,18 +460,18 @@ impl SlackWriter for FATVol {
     ) -> result::Result<(), FATError> {
         // Checks the file isn't empty and has at least one allocated cluster
         let entry = self.find_file(file_path)?;
-        if entry.file_size == 0 && entry.cluster_number() == 0 {
+        if *entry.file_size() == 0 && entry.cluster_number() == 0 {
             return Err(FATError::InsufficientSlackSpace {
                 free: 0,
                 needed: data.len() as u32,
             });
         }
 
-        let clusters = self.list_clusters(entry.cluster_number());
+        let clusters = self.list_clusters(entry.cluster_number())?;
         let slack_byte_size =
-            clusters.len() * self.bpb.sec_per_clus as usize * self.bpb.bytes_per_sec as usize
-                - entry.file_size as usize;
-        let cluster_size = self.bpb.sec_per_clus as u32 * self.bpb.bytes_per_sec as u32;
+            clusters.len() * *self.bpb.sec_per_clus() as usize * *self.bpb.bytes_per_sec() as usize
+                - *entry.file_size() as usize;
+        let cluster_size = *self.bpb.sec_per_clus() as u32 * *self.bpb.bytes_per_sec() as u32;
 
         if data.len() > slack_byte_size {
             return Err(FATError::InsufficientSlackSpace {
@@ -479,10 +487,21 @@ impl SlackWriter for FATVol {
                 "Writing data to a file slack which spans over more than one cluster is not currently supported.".to_string(),
             ));
         }
-        let offset = (self.clus_to_sector(*clusters.last().unwrap()) as u64)
-            * self.bpb.bytes_per_sec as u64
-            + (entry.file_size as u64) % (cluster_size as u64);
-        write_at(disk_file, offset, data)?;
+
+        match clusters.last() {
+            Some(last_cluster) => {
+                let offset = (self.clus_to_sector(*last_cluster) as u64)
+                    * *self.bpb.bytes_per_sec() as u64
+                    + (*entry.file_size() as u64) % (cluster_size as u64);
+                write_at(disk_file, offset, data)?;
+            }
+            _ => {
+                return Err(FATError::InsufficientSlackSpace {
+                    free: 0,
+                    needed: data.len() as u32,
+                });
+            }
+        };
 
         Ok(())
     }

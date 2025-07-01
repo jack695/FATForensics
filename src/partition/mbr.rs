@@ -3,6 +3,7 @@
 //!
 //! It defines structures and methods to interpret partition table entries,
 //! validate partition tables, and extract relevant metadata from disk images.
+use getset::Getters;
 use std::fs::File;
 use std::vec;
 
@@ -51,31 +52,17 @@ impl PTType {
 }
 
 /// Represents a single partition table entry.
-#[derive(Debug)]
+#[derive(Debug, Getters)]
 pub struct PTEntry {
     /// The type of the partition.
+    #[get = "pub(super)"]
     pt_type: PTType,
     /// The starting Logical Block Address (LBA) of the partition.
+    #[get = "pub(super)"]
     lba_start: u32,
     /// The number of sectors in the partition.
+    #[get = "pub(super)"]
     sector_cnt: u32,
-}
-
-impl PTEntry {
-    /// Returns the starting Logical Block Address (LBA) of the partition.
-    pub fn lba_start(&self) -> u32 {
-        self.lba_start
-    }
-
-    /// Returns the number of sectors in the partition.
-    pub fn sector_cnt(&self) -> u32 {
-        self.sector_cnt
-    }
-
-    /// Return the partition type
-    pub fn pt_type(&self) -> &PTType {
-        &self.pt_type
-    }
 }
 
 /// Represents the boot signature of a Master Boot Record (MBR).
@@ -269,8 +256,8 @@ impl LayoutDisplay for Mbr {
         .unwrap();
 
         for (i, entry) in self.pt_entries().iter().enumerate() {
-            let start = u64::from(entry.lba_start());
-            let end = start + u64::from(entry.sector_cnt());
+            let start = u64::from(*entry.lba_start());
+            let end = start + u64::from(*entry.sector_cnt());
 
             if start > last_end {
                 writeln!(

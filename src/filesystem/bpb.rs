@@ -6,6 +6,7 @@
 //! - Filesystem structure validation according to Microsoft's FAT specification
 
 use binread::{BinRead, BinReaderExt};
+use getset::Getters;
 use std::fmt;
 use std::fs::File;
 use std::io;
@@ -19,7 +20,7 @@ use crate::utils;
 ///
 /// The BPB contains essential information about the filesystem layout and properties.
 /// This implementation follows Microsoft's FAT32 specification.
-#[derive(BinRead, Debug)]
+#[derive(BinRead, Debug, Getters)]
 #[br(little)]
 pub struct BPB {
     /// Jump instruction to boot code (must be 0xEB ?? 0x90 or 0xE9 ?? ??)
@@ -27,15 +28,20 @@ pub struct BPB {
     /// OEM identifier (e.g., "MSWIN4.1")
     oem_name: [u8; 8],
     /// Number of bytes per sector (512, 1024, 2048, or 4096)
-    pub(super) bytes_per_sec: u16,
+    #[get = "pub(super)"]
+    bytes_per_sec: u16,
     /// Number of sectors per cluster (power of 2: 1, 2, 4, 8, 16, 32, 64, or 128)
-    pub(super) sec_per_clus: u8,
+    #[get = "pub(super)"]
+    sec_per_clus: u8,
     /// Number of reserved sectors from start of volume
-    pub(super) rsvd_sec_cnt: u16,
+    #[get = "pub(super)"]
+    rsvd_sec_cnt: u16,
     /// Number of FAT copies (typically 2 for redundancy)
-    pub(super) num_fat: u8,
+    #[get = "pub(super)"]
+    num_fat: u8,
     /// Maximum number of root directory entries (0 for FAT32)
-    pub(super) root_ent_cnt: u16,
+    #[get = "pub(super)"]
+    root_ent_cnt: u16,
     /// Total sectors for volumes < 32MB (0 for FAT32)
     tot_sec_16: u16,
     /// Media descriptor (0xF8 for fixed disk)
@@ -59,7 +65,8 @@ pub struct BPB {
     /// Filesystem version (should be 0:0)
     fs_ver: u16,
     /// First cluster of root directory (typically 2)
-    pub(super) root_clus: u32,
+    #[get = "pub(super)"]
+    root_clus: u32,
     /// Sector number of FSINFO structure
     fs_info: u16,
     /// Sector number of backup boot sector

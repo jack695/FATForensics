@@ -22,6 +22,9 @@ pub enum DiskError {
     /// Contains the invalid signature value that was found.
     #[error("Invalid signature: {0}")]
     InvalidSignature(u16),
+    /// Parsing error
+    #[error("Parsing error: {0}")]
+    ParsingError(String),
 }
 
 /// Converts standard I/O errors into MBRError.
