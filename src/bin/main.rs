@@ -57,7 +57,11 @@ fn main() {
             }
             Command::Quit => break,
             Command::Print => match &run_state.disk {
-                Some(disk) => disk.print_layout(3),
+                Some(disk) => {
+                    if let Err(e) = disk.print_layout(3) {
+                        error!("Print layout error: {}", e);
+                    }
+                }
                 None => error!("Open disk image first"),
             },
             Command::Partition(vol_nb) => {

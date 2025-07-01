@@ -89,7 +89,10 @@ impl FATVol {
         fst_cluster: u32,
     ) -> Result<dir_entry::DirEntry, FATError> {
         let mut parts = file_path.components();
-        let current_part = parts.next().unwrap();
+        let current_part = match parts.next() {
+            Some(part) => part,
+            None => return Err(FATError::FileNotFound),
+        };
         let remaining: PathBuf = parts.clone().collect();
 
         let dir_entries: Vec<DirEntry> = if parts.count() > 0 {
@@ -344,23 +347,21 @@ impl FATVol {
 
 /// Implements the LayoutDisplay trait for Bpb
 impl LayoutDisplay for FATVol {
-    fn display_layout(&self, indent: u8) -> String {
+    fn display_layout(&self, indent: u8) -> Result<String, std::fmt::Error> {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());
 
-        writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ").unwrap();
+        writeln!(out, "{}┌{:─^55}┐", indent, " FAT32 Partition Layout ")?;
         writeln!(
             out,
             "{}├{:^12}┬{:^12}┬{:^12}┬{:^16}┤",
             indent, "Region", "Start", "End", "Description"
-        )
-        .unwrap();
+        )?;
         writeln!(
             out,
             "{}├{:─<12}┼{:─<12}┼{:─<12}┼{:─<16}┤",
             indent, "", "", "", ""
-        )
-        .unwrap();
+        )?;
 
         writeln!(
             out,
@@ -370,8 +371,7 @@ impl LayoutDisplay for FATVol {
             self.rsvd_start(),
             self.fat_start(),
             "Boot + Reserved"
-        )
-        .unwrap();
+        )?;
         for i in 0..*self.bpb.num_fat() {
             let fat_i_start = self.fat_start() + i as u32 * self.bpb.fat_sz();
             let fat_i_end = fat_i_start + self.bpb.fat_sz();
@@ -383,8 +383,7 @@ impl LayoutDisplay for FATVol {
                 fat_i_start,
                 fat_i_end,
                 "FAT Tables"
-            )
-            .unwrap();
+            )?;
         }
         if self.bpb.fat_type() != FATType::FAT32 {
             writeln!(
@@ -395,8 +394,7 @@ impl LayoutDisplay for FATVol {
                 self.root_start(),
                 self.data_start(),
                 "Root Directory"
-            )
-            .unwrap();
+            )?;
         }
         writeln!(
             out,
@@ -406,8 +404,7 @@ impl LayoutDisplay for FATVol {
             self.data_start(),
             self.data_end(),
             "Cluster Data"
-        )
-        .unwrap();
+        )?;
         if self.data_end() < self.end {
             writeln!(
                 out,
@@ -417,18 +414,16 @@ impl LayoutDisplay for FATVol {
                 self.data_end(),
                 self.end,
                 "Volume Slack"
-            )
-            .unwrap();
+            )?;
         }
 
         writeln!(
             out,
             "{}└{:─<12}┴{:─<12}┴{:─<12}┴{:─<16}┘",
             indent, "", "", "", ""
-        )
-        .unwrap();
+        )?;
 
-        out
+        Ok(out)
     }
 }
 

@@ -119,7 +119,7 @@ impl Bpb {
         utils::read_sector(file, sector.into(), sector_size, &mut buf)?;
 
         let mut reader = io::Cursor::new(buf);
-        let bpb: Bpb = reader.read_be().unwrap();
+        let bpb: Bpb = reader.read_be()?;
 
         if validate { bpb.validate() } else { Ok(bpb) }
     }

@@ -104,21 +104,23 @@ impl Disk {
     /// The layout includes:
     /// - Partition table information
     /// - Volume information for each partition
-    pub fn print_layout(&self, indent: u8) {
+    pub fn print_layout(&self, indent: u8) -> Result<(), std::fmt::Error> {
         match &self.part_table {
-            PartTable::Mbr(mbr) => print!("{}", mbr.display_layout(indent)),
+            PartTable::Mbr(mbr) => print!("{}", mbr.display_layout(indent)?),
         }
 
         for vol in self.volumes.iter() {
             match vol {
                 Volume::FAT32(vol) => {
-                    print!("\n{}", vol.display_layout(indent + 3))
+                    print!("\n{}", vol.display_layout(indent + 3)?)
                 }
                 Volume::Unsupported => {
                     print!("\nUnsupported Volume Type.\n")
                 }
             }
         }
+
+        Ok(())
     }
 
     /// Returns the number of valid volumes found on the disk.

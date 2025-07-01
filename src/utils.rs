@@ -65,7 +65,7 @@ pub fn write_file_at<T: io::Write + io::Seek>(
     limit: u64,
 ) -> io::Result<()> {
     let mut f = File::open(path)?;
-    let f_len = f.metadata().unwrap().len();
+    let f_len = f.metadata()?.len();
 
     // Check the file wouldn't cross the limit
     if limit > 0 && offset + f_len > limit {

@@ -223,37 +223,34 @@ impl Mbr {
 /// - Prints the MBR sector range.
 /// - Iterates through the partition table entries and prints their sector ranges.
 impl LayoutDisplay for Mbr {
-    fn display_layout(&self, indent: u8) -> String {
+    fn display_layout(&self, indent: u8) -> Result<String, std::fmt::Error> {
         let mut out = String::from("");
         let indent = " ".repeat(indent.into());
 
         let mut last_end = 0;
         let disk_end = self.sector_cnt;
 
-        writeln!(out, "{}┌{:─^55}┐", indent, " Master Boot Record Layout ").unwrap();
-        writeln!(out, "{}├{:<45}{:>10}┤", indent, "Disk Size", disk_end,).unwrap();
+        writeln!(out, "{}┌{:─^55}┐", indent, " Master Boot Record Layout ")?;
+        writeln!(out, "{}├{:<45}{:>10}┤", indent, "Disk Size", disk_end,)?;
         writeln!(
             out,
             "{}├{:<45}{:>10}┤",
             indent,
             "Boot Signature",
             format!("{:>10}", self.boot_signature)
-        )
-        .unwrap();
-        writeln!(out, "{}├{:─^55}┤", indent, "").unwrap();
+        )?;
+        writeln!(out, "{}├{:─^55}┤", indent, "")?;
 
         writeln!(
             out,
             "{}├{:^12}┬{:^12}┬{:^12}┬{:^16}┤",
             indent, "Region", "Start", "End", "Description"
-        )
-        .unwrap();
+        )?;
         writeln!(
             out,
             "{}├{:─<12}┼{:─<12}┼{:─<12}┼{:─<16}┤",
             indent, "", "", "", ""
-        )
-        .unwrap();
+        )?;
 
         for (i, entry) in self.pt_entries().iter().enumerate() {
             let start = u64::from(*entry.lba_start());
@@ -264,8 +261,7 @@ impl LayoutDisplay for Mbr {
                     out,
                     "{}│{:^12}│{:>12}│{:>12}│{:^16}│",
                     indent, "", last_end, start, "Unallocated"
-                )
-                .unwrap();
+                )?;
             }
 
             writeln!(
@@ -276,8 +272,7 @@ impl LayoutDisplay for Mbr {
                 start,
                 end,
                 format!("{:}", entry.pt_type())
-            )
-            .unwrap();
+            )?;
 
             last_end = end;
         }
@@ -287,17 +282,15 @@ impl LayoutDisplay for Mbr {
                 out,
                 "{}│{:^12}│{:>12}│{:>12}│{:^16}│",
                 indent, "", last_end, disk_end, "Unallocated"
-            )
-            .unwrap();
+            )?;
         }
 
         writeln!(
             out,
             "{}└{:─<12}┴{:─<12}┴{:─<12}┴{:─<16}┘",
             indent, "", "", "", ""
-        )
-        .unwrap();
+        )?;
 
-        out
+        Ok(out)
     }
 }
