@@ -87,11 +87,22 @@ pub enum FATError {
     /// Unsupported feature
     #[error("Unsupported feature.")]
     UnsupportedFeature(String),
+
+    /// Parsing error occured during structure initialization
+    #[error("BinRead Error: `{0}`")]
+    BinReadError(binread::Error),
 }
 
 /// Converts standard I/O errors into FATError.
 impl From<io::Error> for FATError {
     fn from(err: io::Error) -> Self {
         FATError::IOError(err)
+    }
+}
+
+/// Converts BinRead errors into FATError.
+impl From<binread::Error> for FATError {
+    fn from(err: binread::Error) -> Self {
+        FATError::BinReadError(err)
     }
 }

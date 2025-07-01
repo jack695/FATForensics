@@ -4,7 +4,7 @@
 //! about files and directories stored in the filesystem. Each directory entry is 32 bytes
 //! and contains information such as filename, attributes, timestamps, and cluster allocation.
 
-use binread::{BinRead, BinReaderExt};
+use binread::{BinRead, BinReaderExt, io::Cursor};
 use std::fmt;
 use std::io;
 
@@ -63,9 +63,9 @@ impl DirEntry {
     ///
     /// # Panics
     /// - Panics if the byte slice is not exactly 32 bytes or if parsing fails
-    pub fn from_slice(buf: &[u8]) -> Self {
+    pub fn from_slice(buf: &[u8]) ->io::Result<Self> {
         let mut reader = io::Cursor::new(buf);
-        reader.read_be().unwrap()
+        reader.read_le()
     }
 
     /// Checks if a given filename matches this directory entry's short name.
@@ -76,30 +76,23 @@ impl DirEntry {
     /// # Returns
     /// - `true`: If the filename matches this directory entry
     /// - `false`: If the filename doesn't match or is invalid
-    ///
-    /// # Implementation Details
-    /// The comparison:
-    /// 1. Splits the input name by '.' to separate name and extension
-    /// 2. Validates that name ≤ 8 characters and extension ≤ 3 characters
-    /// 3. Converts to uppercase and pads with spaces to match 8.3 format
-    /// 4. Compares with the stored name field
     pub fn same_short_name(&self, name: &str) -> bool {
         let parts: Vec<&str> = name.split('.').collect();
-        if parts.len() == 0 {
-            return false;
-        }
-        if parts[0].len() > 8 || (parts.len() == 2 && parts[1].len() > 3) {
-            return false;
-        }
-
-        let name = format!("{:<8}", parts[0].to_uppercase());
-        let extension = if parts.len() == 2 {
-            format!("{:<3}", parts[1].to_uppercase())
-        } else {
-            "   ".to_string()
+        let (name, ext) = match parts.as_slice() {
+            [name] => (format!("{:<8}", name.to_uppercase()), format!("{:<3}", "")),
+            [name, ext] => (
+                format!("{:<8}", name.to_uppercase()),
+                format!("{:<3}", ext.to_uppercase()),
+            ),
+            _ => return false,
         };
 
-        format!("{}{}", name, extension).as_bytes() == self.name
+        // Unecessary checks, but highlights FAT specifications
+        if name.len() > 8 || ext.len() > 3 {
+            return false;
+        }
+
+        format!("{}{}", name, ext).as_bytes() == self.name
     }
 
     /// Returns the complete first cluster number for this entry.

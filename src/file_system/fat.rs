@@ -119,7 +119,7 @@ impl FATVol {
         Err(FATError::FileNotFound)
     }
 
-    pub fn list_dir(&self, first_cluster: u32) -> io::Result<Vec<DirEntry>> {
+    pub fn list_dir(&self, first_cluster: u32) -> Result<Vec<DirEntry>, FATError> {
         assert!(first_cluster >= 2);
 
         let clusters = self.list_clusters(first_cluster);
@@ -130,7 +130,7 @@ impl FATVol {
 
             for off in (0..buf.len()).step_by(32) {
                 if u32_at(&buf, off) != 0 {
-                    dir_entries.push(DirEntry::from_slice(&buf[off..]));
+                    dir_entries.push(DirEntry::from_slice(&buf[off..])?);
                 }
             }
         }
