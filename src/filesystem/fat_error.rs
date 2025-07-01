@@ -1,13 +1,13 @@
-//! Error types for BIOS Parameter Block (BPB) parsing and validation.
+//! Error types for BIOS Parameter Block (Bpb) parsing and validation.
 //!
-//! The BPB is a data structure that describes the physical layout and properties of a FAT file system.
-//! This module defines errors that can occur while parsing and validating BPB fields according to the
+//! The Bpb is a data structure that describes the physical layout and properties of a FAT file system.
+//! This module defines errors that can occur while parsing and validating Bpb fields according to the
 //! FAT32 specification.
 
 use std::io;
 use thiserror;
 
-/// Errors that can occur during BPB parsing and validation.
+/// Errors that can occur during Bpb parsing and validation.
 #[derive(thiserror::Error, Debug)]
 pub enum FATError {
     /// The first three bytes of a FAT volume must contain a valid x86 jump instruction.
@@ -61,10 +61,10 @@ pub enum FATError {
     InvalidRootClus(u32),
 
     /// The boot sector signature must be 0x55AA.
-    #[error("Invalid BPB signature: `{0}`. Expected signature: 0x55AA")]
+    #[error("Invalid Bpb signature: `{0}`. Expected signature: 0x55AA")]
     InvalidSignature(String),
 
-    /// Underlying I/O errors that occur while reading the BPB.
+    /// Underlying I/O errors that occur while reading the Bpb.
     #[error("IO Error: `{0}`")]
     IOError(io::Error),
 

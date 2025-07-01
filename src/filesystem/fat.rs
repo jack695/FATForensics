@@ -9,7 +9,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::{io, result};
 
-use super::bpb::BPB;
+use super::bpb::Bpb;
 use super::dir_entry::DirEntry;
 use super::fat_error::FATError;
 use super::fat_type::FATType;
@@ -19,21 +19,21 @@ use crate::utils::{read_sector, u32_at, write_at};
 
 /// Structure for a FAT volume.
 ///
-/// Essentially, it is a wrapper around the BPB.
+/// Essentially, it is a wrapper around the Bpb.
 pub struct FATVol {
-    bpb: BPB,
+    bpb: Bpb,
     start: u32,
     end: u32,
     disk_path: String,
 }
 
 impl FATVol {
-    /// Reads the BPB from a file at the specified sector and optionally validates the volume.
+    /// Reads the Bpb from a file at the specified sector and optionally validates the volume.
     ///
     /// # Parameters
     /// - `file`: The file containing the filesystem
-    /// - `sector`: The sector number where the BPB is located
-    /// - `validate`: Whether to perform validation checks on the BPB
+    /// - `sector`: The sector number where the Bpb is located
+    /// - `validate`: Whether to perform validation checks on the Bpb
     /// - `sector_size`: The size of each sector in bytes
     ///
     /// # Returns
@@ -51,11 +51,11 @@ impl FATVol {
         sector_size: usize,
     ) -> Result<FATVol, FATError> {
         let mut file = File::open(disk_path)?;
-        let bpb = BPB::from_file(&mut file, start, validate, sector_size)?;
+        let bpb = Bpb::from_file(&mut file, start, validate, sector_size)?;
 
         Ok(Self {
-            bpb: bpb,
-            start: start,
+            bpb,
+            start,
             end: start + sector_cnt,
             disk_path: disk_path.to_string(),
         })
@@ -185,13 +185,14 @@ impl FATVol {
         let sector = self.fat_start()
             + (cluster * self.fat_entry_bit_sz() / 8) / (*self.bpb.bytes_per_sec() as u32);
 
+        let err_msg = format!("Couldn't read sector {}.", sector).to_string();
         read_sector(
             &mut file,
             sector.into(),
             (*self.bpb.bytes_per_sec()).into(),
             &mut buf,
         )
-        .expect(format!("Couldn't read sector {}.", sector).as_str());
+        .expect(&err_msg);
 
         u32_at(
             &buf,
@@ -236,8 +237,8 @@ impl FATVol {
                 &mut buffer,
             )?;
 
-            for j in 0..buffer.len() {
-                if buffer[j] != 0 {
+            for byte in &buffer {
+                if *byte != 0 {
                     return Ok(false);
                 }
             }
@@ -247,7 +248,7 @@ impl FATVol {
     }
 
     pub fn cluster_size(&self) -> u32 {
-        return *self.bpb.bytes_per_sec() as u32 * *self.bpb.sec_per_clus() as u32;
+        *self.bpb.bytes_per_sec() as u32 * *self.bpb.sec_per_clus() as u32
     }
 
     fn update_fat_entry(&self, cluster_nb: u32, value: u32) -> io::Result<()> {
@@ -341,7 +342,7 @@ impl FATVol {
     }
 }
 
-/// Implements the LayoutDisplay trait for BPB
+/// Implements the LayoutDisplay trait for Bpb
 impl LayoutDisplay for FATVol {
     fn display_layout(&self, indent: u8) -> String {
         let mut out = String::from("");

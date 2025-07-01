@@ -1,7 +1,7 @@
-//! FAT BPB structure.
+//! FAT Bpb structure.
 //!
 //! This module implements:
-//! - BIOS Parameter Block (BPB) parsing and validation
+//! - BIOS Parameter Block (Bpb) parsing and validation
 //! - FAT type detection (FAT12/16/32)
 //! - Filesystem structure validation according to Microsoft's FAT specification
 
@@ -18,11 +18,11 @@ use crate::utils;
 
 /// BIOS Parameter Block structure for FAT filesystems.
 ///
-/// The BPB contains essential information about the filesystem layout and properties.
+/// The Bpb contains essential information about the filesystem layout and properties.
 /// This implementation follows Microsoft's FAT32 specification.
 #[derive(BinRead, Debug, Getters)]
 #[br(little)]
-pub struct BPB {
+pub struct Bpb {
     /// Jump instruction to boot code (must be 0xEB ?? 0x90 or 0xE9 ?? ??)
     jmp: [u8; 3],
     /// OEM identifier (e.g., "MSWIN4.1")
@@ -86,24 +86,24 @@ pub struct BPB {
     /// Filesystem type label ("FAT32   ")
     fil_sys_type: [u8; 8],
 
-    /// Boot code (not part of BPB specification)
+    /// Boot code (not part of Bpb specification)
     #[br(count = 420)]
     boot_code: Vec<u8>,
     /// Boot sector signature (0x55 0xAA)
     sig: [u8; 2],
 }
 
-impl BPB {
-    /// Reads and optionally validates a BPB from a file at the specified sector.
+impl Bpb {
+    /// Reads and optionally validates a Bpb from a file at the specified sector.
     ///
     /// # Parameters
     /// - `file`: The file containing the filesystem
-    /// - `sector`: The sector number where the BPB is located
-    /// - `validate`: Whether to perform validation checks on the BPB
+    /// - `sector`: The sector number where the Bpb is located
+    /// - `validate`: Whether to perform validation checks on the Bpb
     /// - `sector_size`: The size of each sector in bytes
     ///
     /// # Returns
-    /// - `Ok(BPB)`: The parsed and optionally validated BPB structure
+    /// - `Ok(Bpb)`: The parsed and optionally validated Bpb structure
     /// - `Err(FATError)`: If reading fails or validation fails
     ///
     /// # Errors
@@ -114,12 +114,12 @@ impl BPB {
         sector: u32,
         validate: bool,
         sector_size: usize,
-    ) -> Result<BPB, FATError> {
+    ) -> Result<Bpb, FATError> {
         let mut buf = vec![0; sector_size];
         utils::read_sector(file, sector.into(), sector_size, &mut buf)?;
 
         let mut reader = io::Cursor::new(buf);
-        let bpb: BPB = reader.read_be().unwrap();
+        let bpb: Bpb = reader.read_be().unwrap();
 
         if validate { bpb.validate() } else { Ok(bpb) }
     }
@@ -187,7 +187,7 @@ impl BPB {
         }
     }
 
-    /// Validates the BPB structure according to FAT32 specification requirements.
+    /// Validates the Bpb structure according to FAT32 specification requirements.
     ///
     /// # Returns
     /// - `Ok(Self)`: If all validation checks pass
@@ -302,8 +302,8 @@ impl BPB {
     }
 }
 
-/// Implements the Display trait for BPB
-impl fmt::Display for BPB {
+/// Implements the Display trait for Bpb
+impl fmt::Display for Bpb {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut offset = 0;
 
@@ -314,7 +314,7 @@ impl fmt::Display for BPB {
             }};
         }
 
-        writeln!(f, "BIOS Parameter Block (BPB):")?;
+        writeln!(f, "BIOS Parameter Block (Bpb):")?;
 
         field!("jmp", format!("{:02X?}", self.jmp), 3);
         field!("oem_name", String::from_utf8_lossy(&self.oem_name), 8);
@@ -358,7 +358,7 @@ impl fmt::Display for BPB {
         for (i, chunk) in self.boot_code.chunks(16).enumerate() {
             write!(f, "  0x{:04X}: ", offset + i * 16)?;
             for byte in chunk {
-                write!(f, "{:02X} ", byte)?;
+                write!(f, "{byte:02X} ")?;
             }
             writeln!(f)?;
         }

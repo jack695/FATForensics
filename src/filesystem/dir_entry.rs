@@ -111,7 +111,7 @@ impl DirEntry {
         Ok(name.as_bytes().to_vec())
     }
 
-    fn from_8_3_name(&self) -> Result<String, Utf8Error> {
+    fn fmt_name(&self) -> Result<String, Utf8Error> {
         let raw_name = &self.name[0..8];
         let raw_ext = &self.name[8..11];
 
@@ -161,7 +161,7 @@ impl fmt::Display for DirEntry {
     /// # Returns
     /// - A string representation showing the filename and file size
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.from_8_3_name() {
+        match self.fmt_name() {
             Ok(fmt_name) => {
                 write!(f, "\"{}\" {}B", fmt_name, self.file_size)
             }

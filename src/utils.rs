@@ -69,13 +69,10 @@ pub fn write_file_at<T: io::Write + io::Seek>(
 
     // Check the file wouldn't cross the limit
     if limit > 0 && offset + f_len > limit {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!(
-                "Cannot write the {}-byte long file starting from {} without crossing the limit {}.",
-                f_len, offset, limit
-            ),
-        ));
+        return Err(std::io::Error::other(format!(
+            "Cannot write the {}-byte long file starting from {} without crossing the limit {}.",
+            f_len, offset, limit
+        )));
     }
 
     for s in (0..f_len).step_by(sector_size) {

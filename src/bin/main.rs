@@ -88,7 +88,7 @@ fn main() {
                     match write_file_at(
                         &mut disk_file,
                         sector * run_state.sector_size as u64,
-                        &file_path.as_str(),
+                        file_path.as_str(),
                         run_state.sector_size,
                         0,
                     ) {

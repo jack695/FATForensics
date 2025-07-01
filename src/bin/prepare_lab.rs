@@ -29,7 +29,7 @@ fn main() {
     };
 
     // Open the disk
-    let disk = Disk::from_file(&disk_path, SECTOR_SIZE, false).unwrap_or_else(|e| {
+    let disk = Disk::from_file(disk_path, SECTOR_SIZE, false).unwrap_or_else(|e| {
         error!("Error: {}", e);
         std::process::exit(1);
     });
@@ -40,7 +40,7 @@ fn main() {
         1,
         "The number of volumes should be exactly one."
     );
-    let vol = match &disk.volumes().get(0) {
+    let vol = match disk.volumes().first() {
         Some(Volume::FAT32(fat_vol)) => fat_vol,
         _ => {
             error!("The disk should contain one FAT32 volume.");
@@ -70,7 +70,7 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
         .expect("Failed to open disk image file.");
 
     match flag_idx {
-        0 => hide_flag_after_mbr(flag_file_path, &mut disk_file, fat_vol, &disk),
+        0 => hide_flag_after_mbr(flag_file_path, &mut disk_file, fat_vol, disk),
         1 => hide_flag_in_volume_slack(flag_file_path, &mut disk_file, fat_vol),
         2 => hide_flag_in_file_slack(flag_file_path, &mut disk_file, fat_vol),
         3 => hide_file_in_bad_clusters(flag_file_path, &mut disk_file, fat_vol),
@@ -84,7 +84,7 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
 fn hide_flag_after_mbr(flag_file_path: &str, disk_file: &mut File, fat_vol: &FATVol, disk: &Disk) {
     write_file_at(
         disk_file,
-        SECTOR_SIZE as u64 * 1,
+        SECTOR_SIZE as u64,
         flag_file_path,
         SECTOR_SIZE,
         (fat_vol.start() * disk.sector_size() as u32).into(),

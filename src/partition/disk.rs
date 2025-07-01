@@ -46,7 +46,7 @@ impl Disk {
     /// # Parameters
     /// - `path`: Path to the disk image file
     /// - `sector_size`: Size of each sector in bytes
-    /// - `validation`: Whether to validate volume structures (like BPB)
+    /// - `validation`: Whether to validate volume structures (like Bpb)
     ///
     /// # Returns
     /// - `Ok(Disk)`: Successfully parsed disk with its partition table and volumes
@@ -90,7 +90,7 @@ impl Disk {
             file_path: path.to_string(),
             part_table: PartTable::Mbr(mbr),
             volumes: vol,
-            sector_size: sector_size,
+            sector_size,
         };
 
         Ok(disk)
