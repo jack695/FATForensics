@@ -1,7 +1,7 @@
-//! FAT Bpb structure.
+//! FAT BIOS Parameter Block (BPB) structure and parsing.
 //!
 //! This module implements:
-//! - BIOS Parameter Block (Bpb) parsing and validation
+//! - BIOS Parameter Block (BPB) parsing and validation
 //! - FAT type detection (FAT12/16/32)
 //! - Filesystem structure validation according to Microsoft's FAT specification
 

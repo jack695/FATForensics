@@ -1,6 +1,6 @@
-//! Error types for Master Boot Record (MBR) operations.
+//! Error types for disk and partition operations.
 //!
-//! This module provides error handling for various MBR-related operations,
+//! This module provides error handling for various disk and partition-related operations,
 //! including I/O errors, partition table validation, and boot signature verification.
 
 use std::io;

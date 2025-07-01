@@ -1,7 +1,11 @@
-//! FAT32 volume structure.
+//! FAT volume structure and operations.
 //!
-//! This module implements the core functions to interact with a FAT volume.
-//! Example: to write a file in the volume slack or to display its layout.
+//! This module implements the core functions to interact with a FAT volume, including:
+//! - Reading and validating the BPB
+//! - Listing directory entries
+//! - Finding files and clusters
+//! - Writing to slack space
+//! - Displaying the volume layout
 
 use std::fmt::Write as FmtWrite;
 use std::fs::File;

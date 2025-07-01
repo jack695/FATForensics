@@ -14,11 +14,11 @@ pub enum Command {
     Open(String),
     /// Command to print general disk information.
     Print,
-    /// Select the partition to analyse.
+    /// Select the partition to analyse (by index).
     Partition(u8),
-    /// Skip the MBP validation
+    /// Skip the MBR validation.
     Skip,
-    /// Write a file to a given sector.
+    /// Write a file to a given sector: (file path, starting sector).
     Write((String, u64)),
     /// Command for an unknown input, encapsulating the raw input as a `String`.
     Unknown(String),
@@ -35,15 +35,13 @@ impl Command {
     /// - `s`: A string slice representing the user input.
     ///
     /// # Returns
-    /// - `Command::Quit` if the input is "quit".
-    /// - `Command::Open` with the file path if the input starts with "open" followed by a valid argument.
-    /// - `Command::Print` if the input is "print".
-    /// - `Command::Part` if the input is "part".
-    /// - `Command::Skip` if the input is "skip".
-    /// - `Command::Write` if the input is "write".
-    /// - `Command::Unknown` if the input does not match any known command.
-    /// - `Command::Invalid` if the input is "open" but missing an argument.
-    /// - `Command::Empty` if the input is empty or contains only whitespace.
+    /// - The corresponding `Command` variant based on the input string.
+    ///
+    /// # Behavior
+    /// - Recognizes commands: `quit`, `open <file>`, `print`, `part <idx>`, `skip`, `write <file> <sector>`
+    /// - Returns `Command::Invalid` for missing or malformed arguments.
+    /// - Returns `Command::Unknown` for unrecognized commands.
+    /// - Returns `Command::Empty` for empty or whitespace-only input.
     pub fn from_string(s: &str) -> Self {
         let mut parts = s.split_whitespace();
         match parts.next() {
@@ -59,7 +57,7 @@ impl Command {
                 Some(arg) => match arg.parse::<u8>() {
                     Ok(nb) => Command::Partition(nb),
                     Err(_) => Command::Invalid(String::from(
-                        "Arg parsing error: 'part' expects an unsigned integer.",
+                        "Arg parsing error: 'part' expects the partition number as an unsigned integer.",
                     )),
                 },
                 None => Command::Invalid(String::from(
@@ -82,7 +80,7 @@ impl Command {
                     Some(arg) => match arg.parse::<u64>() {
                         Ok(sector) => Command::Write((filepath.to_string(), sector)),
                         Err(_) => Command::Invalid(String::from(
-                            "Arg parsing error: 'write' wan't extract the starting sector.",
+                            "Arg parsing error: 'write' expects the starting sector as an unsigned integer.",
                         )),
                     },
                     None => Command::Invalid(String::from(

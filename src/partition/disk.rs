@@ -2,8 +2,8 @@
 //!
 //! This module provides functionality for:
 //! - Opening and parsing disk images
-//! - Handling different partition table types (currently MBR)
-//! - Managing volume analysis (currently FAT32)
+//! - Handling different partition table types (currently only MBR)
+//! - Managing volume analysis (currently only FAT32 filesystems)
 //! - Displaying disk layout information
 
 use getset::Getters;
@@ -26,20 +26,22 @@ enum PartTable {
 /// Represents different types of volumes that can be found in partitions.
 /// Currently only FAT32 is supported.
 pub enum Volume {
+    /// FAT32 volume
     FAT32(FATVol),
+    /// Placeholder for unsupported volume types
     Unsupported,
 }
 
 /// Represents a disk image with its partition table and volumes.
 #[derive(Getters)]
 pub struct Disk {
-    /// The open disk image file.
+    /// The open disk image file path.
     #[get = "pub"]
     file_path: PathBuf,
     /// The partition table found on the disk
     #[get = "pub"]
     part_table: PartTable,
-    /// List of volumes found on the disk, with their starting sector offsets
+    /// List of volumes found on the disk
     #[get = "pub"]
     volumes: Vec<Volume>,
     /// The size in bytes of a sector
@@ -61,8 +63,7 @@ impl Disk {
     ///
     /// # Errors
     /// - Returns `DiskError::Io` if the file cannot be opened or read
-    /// - Returns `DiskError::Mbr` if the MBR cannot be parsed
-    /// - Individual volume parsing errors are logged but don't cause function failure
+    /// - Returns `DiskError::ParsingError` if the MBR or a volume cannot be parsed
     pub fn from_file(path: &Path, sector_size: usize, validation: bool) -> Result<Self, DiskError> {
         let mut f = File::options().read(true).write(true).open(path)?;
         let f_len = f.metadata()?.len();
@@ -72,22 +73,20 @@ impl Disk {
         let mut vol = vec![];
         for (part_idx, pt_entry) in mbr.pt_entries().iter().enumerate() {
             if let PTType::LBAFat32 = *pt_entry.pt_type() {
-                {
-                    match FATVol::from_file(
-                        path,
-                        *pt_entry.lba_start(),
-                        *pt_entry.sector_cnt(),
-                        validation,
-                        sector_size,
-                    ) {
-                        Ok(fat_vol) => {
-                            vol.push(Volume::FAT32(fat_vol));
-                        }
-                        Err(error) => {
-                            return Err(DiskError::ParsingError(format!(
-                                "Error while reading partition #{part_idx}: {error}"
-                            )));
-                        }
+                match FATVol::from_file(
+                    path,
+                    *pt_entry.lba_start(),
+                    *pt_entry.sector_cnt(),
+                    validation,
+                    sector_size,
+                ) {
+                    Ok(fat_vol) => {
+                        vol.push(Volume::FAT32(fat_vol));
+                    }
+                    Err(error) => {
+                        return Err(DiskError::ParsingError(format!(
+                            "Error while reading partition #{part_idx}: {error}"
+                        )));
                     }
                 }
             }
@@ -107,6 +106,10 @@ impl Disk {
     ///
     /// # Parameters
     /// - `indent`: Number of spaces to indent the layout
+    ///
+    /// # Returns
+    /// - `Ok(())` if the layout is printed successfully
+    /// - `Err(std::fmt::Error)` if formatting fails
     ///
     /// The layout includes:
     /// - Partition table information

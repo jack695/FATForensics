@@ -1,8 +1,10 @@
-//! This module provides functionality for parsing and handling partition tables
-//! and Master Boot Records (MBR) in the FAT32 file system.
+//! MBR (Master Boot Record) and partition table parsing and validation.
 //!
-//! It defines structures and methods to interpret partition table entries,
-//! validate partition tables, and extract relevant metadata from disk images.
+//! This module provides:
+//! - Structures and methods to interpret partition table entries
+//! - Validation of partition tables and boot signatures
+//! - Extraction of partition metadata from disk images
+
 use binread::io;
 use getset::Getters;
 use std::vec;
@@ -110,6 +112,7 @@ pub struct Mbr {
     pt_entries: [PTEntry; PART_CNT],
     /// The boot signature of the MBR.
     boot_signature: BootSignature,
+    /// The total number of sectors on the disk.
     sector_cnt: u64,
 }
 

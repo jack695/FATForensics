@@ -1,4 +1,7 @@
-//! FAT32 enum for the different FAT types.
+//! Enum for the different FAT types (FAT12, FAT16, FAT32).
+//!
+//! This module defines the FATType enum, which is used to distinguish between FAT12, FAT16, and FAT32
+//! filesystems based on the number of clusters and other BPB fields.
 
 use std::fmt;
 

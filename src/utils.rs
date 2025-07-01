@@ -1,3 +1,8 @@
+//! Utility functions for sector and buffer manipulation, file I/O, and byte extraction.
+//!
+//! These helpers are used throughout the codebase for reading/writing sectors, extracting
+//! values from byte buffers, and handling file operations in a generic and reusable way.
+
 use std::io;
 
 /// Reads a specific sector from a file into a buffer.
