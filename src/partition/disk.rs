@@ -6,6 +6,7 @@
 //! - Managing volume analysis (currently FAT32)
 //! - Displaying disk layout information
 
+use getset::Getters;
 use std::fs::File;
 
 use super::disk_error::DiskError;
@@ -29,14 +30,19 @@ pub enum Volume {
 }
 
 /// Represents a disk image with its partition table and volumes.
+#[derive(Getters)]
 pub struct Disk {
     /// The open disk image file.
+    #[get = "pub"]
     file_path: String,
     /// The partition table found on the disk
+    #[get = "pub"]
     part_table: PartTable,
     /// List of volumes found on the disk, with their starting sector offsets
+    #[get = "pub"]
     volumes: Vec<Volume>,
     /// The size in bytes of a sector
+    #[get = "pub"]
     sector_size: usize,
 }
 
@@ -122,37 +128,5 @@ impl Disk {
         }
 
         Ok(())
-    }
-
-    /// Returns the number of valid volumes found on the disk.
-    ///
-    /// # Returns
-    /// - The count of successfully parsed volumes
-    pub fn vol_count(&self) -> usize {
-        self.volumes.len()
-    }
-
-    /// Returns the disk image file path.
-    ///
-    /// # Returns
-    /// - The disk image file path.
-    pub fn file_path(&self) -> &str {
-        &self.file_path
-    }
-
-    /// Returns the list of volumes.
-    ///
-    /// # Returns
-    /// - The list of volumes
-    pub fn volumes(&self) -> &Vec<Volume> {
-        &self.volumes
-    }
-
-    /// Returns the size of a sector.
-    ///
-    /// # Returns
-    /// - The size of a sector.
-    pub fn sector_size(&self) -> usize {
-        self.sector_size
     }
 }

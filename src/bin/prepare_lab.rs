@@ -36,7 +36,7 @@ fn main() {
 
     // Check the disk contains exactly one FAT32 volume
     assert_eq!(
-        disk.vol_count(),
+        disk.volumes().len(),
         1,
         "The number of volumes should be exactly one."
     );
@@ -91,7 +91,7 @@ fn hide_flag_after_mbr(flag_file_path: &str, disk_file: &mut File, fat_vol: &FAT
         &mut f,
         f_len,
         SECTOR_SIZE,
-        (fat_vol.start() * disk.sector_size() as u32).into(),
+        (fat_vol.start() * *disk.sector_size() as u32).into(),
     )
     .expect("Failed to hide the flag after the MBR.");
 }

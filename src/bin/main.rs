@@ -68,10 +68,10 @@ fn main() {
                 let part_index: isize = vol_nb as isize - 1;
 
                 if let Some(disk) = &run_state.disk {
-                    if part_index < 0 || part_index >= disk.vol_count() as isize {
+                    if part_index < 0 || part_index >= disk.volumes().len() as isize {
                         error!(
                             "Invalid volume number. There are {} valid volumes on disk.",
-                            disk.vol_count()
+                            disk.volumes().len()
                         );
                     }
 
