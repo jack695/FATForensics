@@ -11,7 +11,7 @@ use std::fs::File;
 use super::disk_error::DiskError;
 use super::mbr::Mbr;
 use super::mbr::PTType;
-use crate::file_system::FATVol;
+use crate::filesystem::fat::FATVol;
 use crate::traits::LayoutDisplay;
 
 /// Represents different types of partition tables that can be found on a disk.

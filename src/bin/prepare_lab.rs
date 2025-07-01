@@ -2,15 +2,14 @@
 //!
 //! The program hides files and flags all over a MBR partitioned disk image and FAT32 fs.
 
-use fat_forensics::file_system::FATVol;
-use fat_forensics::partitioning::Disk;
-use fat_forensics::partitioning::Volume;
+use fat_forensics::Disk;
+use fat_forensics::FATVol;
+use fat_forensics::Volume;
 use fat_forensics::traits::SlackWriter;
 use fat_forensics::utils::write_file_at;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::ops::Div;
 use std::path::Path;
 
 const SECTOR_SIZE: usize = 512;

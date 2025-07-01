@@ -4,9 +4,11 @@
 //! about files and directories stored in the filesystem. Each directory entry is 32 bytes
 //! and contains information such as filename, attributes, timestamps, and cluster allocation.
 
-use binread::{BinRead, BinReaderExt, io::Cursor};
+use binread::{BinRead, BinReaderExt};
 use std::fmt;
 use std::io;
+
+use crate::filesystem::fat_error::FATError;
 
 /// FAT directory entry structure.
 ///
@@ -63,9 +65,9 @@ impl DirEntry {
     ///
     /// # Panics
     /// - Panics if the byte slice is not exactly 32 bytes or if parsing fails
-    pub fn from_slice(buf: &[u8]) ->io::Result<Self> {
+    pub fn from_slice(buf: &[u8]) -> Result<Self, FATError> {
         let mut reader = io::Cursor::new(buf);
-        reader.read_le()
+        reader.read_le().map_err(FATError::from)
     }
 
     /// Checks if a given filename matches this directory entry's short name.

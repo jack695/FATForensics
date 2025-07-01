@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use crate::file_system::FATError;
+use crate::filesystem::fat_error::FATError;
 
 /// Implementation of the LayoutDisplay trait.
 /// It is used to display the layout of a given structure such as a disk or partition.

@@ -3,8 +3,8 @@
 //! The program provides an interactive command-line interface for analyzing FAT32 disk images.
 //! Users can open disk images, print their layout, and quit the program using commands.
 
+use fat_forensics::Disk;
 use fat_forensics::commands::Command;
-use fat_forensics::partitioning::Disk;
 use fat_forensics::utils::write_file_at;
 use std::{
     fs::File,

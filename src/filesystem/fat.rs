@@ -13,7 +13,7 @@ use super::bpb::BPB;
 use super::dir_entry::DirEntry;
 use super::fat_error::FATError;
 use super::fat_type::FATType;
-use crate::file_system::dir_entry;
+use crate::filesystem::dir_entry;
 use crate::traits::{LayoutDisplay, SlackWriter};
 use crate::utils::{read_sector, u32_at, write_at};
 
@@ -50,7 +50,7 @@ impl FATVol {
         validate: bool,
         sector_size: usize,
     ) -> Result<FATVol, FATError> {
-        let mut file = File::open(disk_path).unwrap();
+        let mut file = File::open(disk_path)?;
         let bpb = BPB::from_file(&mut file, start, validate, sector_size)?;
 
         Ok(Self {

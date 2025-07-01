@@ -5,10 +5,10 @@
 //! FAT32 specification.
 
 use std::io;
-use thiserror::Error;
+use thiserror;
 
 /// Errors that can occur during BPB parsing and validation.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum FATError {
     /// The first three bytes of a FAT volume must contain a valid x86 jump instruction.
     #[error("Invalid jump instruction `{0}`")]
