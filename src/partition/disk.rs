@@ -58,8 +58,9 @@ impl Disk {
     /// - Individual volume parsing errors are logged but don't cause function failure
     pub fn from_file(path: &str, sector_size: usize, validation: bool) -> Result<Self, DiskError> {
         let mut f = File::options().read(true).write(true).open(path)?;
+        let f_len = f.metadata()?.len();
 
-        let mbr = Mbr::from_file(&mut f, sector_size)?;
+        let mbr = Mbr::from(&mut f, f_len, sector_size)?;
 
         let mut vol = vec![];
         for (part_idx, pt_entry) in mbr.pt_entries().iter().enumerate() {

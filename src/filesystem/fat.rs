@@ -51,7 +51,7 @@ impl FATVol {
         sector_size: usize,
     ) -> Result<FATVol, FATError> {
         let mut file = File::open(disk_path)?;
-        let bpb = Bpb::from_file(&mut file, start, validate, sector_size)?;
+        let bpb = Bpb::from(&mut file, start, validate, sector_size)?;
 
         Ok(Self {
             bpb,

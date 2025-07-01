@@ -8,7 +8,6 @@
 use binread::{BinRead, BinReaderExt};
 use getset::Getters;
 use std::fmt;
-use std::fs::File;
 use std::io;
 use std::vec;
 
@@ -109,8 +108,8 @@ impl Bpb {
     /// # Errors
     /// - Returns `FATError::IOError` if reading from the file fails
     /// - Returns various `FATError` variants if validation fails and `validate` is true
-    pub fn from_file(
-        file: &mut File,
+    pub fn from<T: io::Read + io::Seek>(
+        file: &mut T,
         sector: u32,
         validate: bool,
         sector_size: usize,

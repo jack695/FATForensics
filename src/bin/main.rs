@@ -6,7 +6,7 @@
 use fat_forensics::Disk;
 use fat_forensics::commands::Command;
 use fat_forensics::utils::write_file_at;
-use log::error;
+use log::{error, warn};
 use std::{
     fs::File,
     io::{self, Write},
@@ -81,32 +81,63 @@ fn main() {
                 }
             }
             Command::Skip => run_state.bpb_validation = false,
-            Command::Write((file_path, sector)) => match &mut run_state.disk {
-                Some(disk) => {
-                    let mut disk_file = File::options()
-                        .read(true)
-                        .write(true)
-                        .open(disk.file_path())
-                        .expect("Failed to open disk image file.");
-
-                    match write_file_at(
-                        &mut disk_file,
-                        sector * run_state.sector_size as u64,
-                        file_path.as_str(),
-                        run_state.sector_size,
-                        0,
-                    ) {
-                        Ok(()) => println!("Write succeeded!"),
-                        Err(err) => error!("Write failed: {}", err),
-                    }
-                }
-                None => {
-                    error!("Open disk image first");
-                }
-            },
+            Command::Write((file_path, sector)) => {
+                write_file_to_disk(&mut run_state, &file_path, sector)
+            }
             Command::Unknown(s) => error!("Unknown command: {:?}", s),
             Command::Invalid(s) => error!("{s}"),
             Command::Empty => {}
         }
+    }
+}
+
+fn write_file_to_disk(run_state: &mut RunState, file_path: &str, sector: u64) {
+    let disk = match &mut run_state.disk {
+        Some(disk) => disk,
+        None => {
+            warn!("Open disk image first");
+            return;
+        }
+    };
+
+    // Open the disk image
+    let mut disk_file = match File::options()
+        .read(true)
+        .write(true)
+        .open(disk.file_path())
+    {
+        Ok(file) => file,
+        Err(e) => {
+            error!("Failed to open disk image file: {}", e);
+            return;
+        }
+    };
+
+    // Open the file to copy on disk
+    let mut f = match File::open(file_path) {
+        Err(e) => {
+            error!("Can't open {}: {}", file_path, e);
+            return;
+        }
+        Ok(file) => file,
+    };
+    let f_len = match f.metadata() {
+        Ok(metadata) => metadata.len(),
+        Err(e) => {
+            error!("Can't read meatadata of {}: {}", file_path, e);
+            return;
+        }
+    };
+
+    match write_file_at(
+        &mut disk_file,
+        sector * run_state.sector_size as u64,
+        &mut f,
+        f_len,
+        run_state.sector_size,
+        0,
+    ) {
+        Ok(()) => println!("Write succeeded!"),
+        Err(err) => error!("Write failed: {}", err),
     }
 }

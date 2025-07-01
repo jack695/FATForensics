@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
-use std::{fs, io};
+use std::io;
 
 /// Reads a specific sector from a file into a buffer.
 ///
@@ -16,15 +14,15 @@ use std::{fs, io};
 /// # Errors
 ///
 /// Returns an `io::Error` if the sector cannot be read.
-pub fn read_sector(
-    file: &mut fs::File,
+pub fn read_sector<T: io::Read + io::Seek>(
+    file: &mut T,
     sector: u64,
     sector_size: usize,
     buffer: &mut Vec<u8>,
 ) -> io::Result<()> {
     buffer.resize(sector_size, 0);
 
-    file.seek(SeekFrom::Start(sector_size as u64 * sector))?;
+    file.seek(io::SeekFrom::Start(sector_size as u64 * sector))?;
 
     file.read_exact(buffer).map_err(|err| {
         io::Error::new(
@@ -44,7 +42,7 @@ pub fn read_sector(
 /// - `offset`: The offset in bytes where the data will be written.
 /// - `data`: A reference to a vector containing the data to be written.
 pub fn write_at<T: io::Write + io::Seek>(disk: &mut T, offset: u64, data: &[u8]) -> io::Result<()> {
-    disk.seek(SeekFrom::Start(offset))?;
+    disk.seek(io::SeekFrom::Start(offset))?;
     disk.write_all(data)
 }
 
@@ -57,27 +55,25 @@ pub fn write_at<T: io::Write + io::Seek>(disk: &mut T, offset: u64, data: &[u8])
 /// - `path`: The path to the file to write into the disk.
 /// - `sector_size`: The size in bytes of a sector.
 /// - `limit`: The byte offset after which writing should be forbidden.
-pub fn write_file_at<T: io::Write + io::Seek>(
+pub fn write_file_at<T: io::Write + io::Seek, S: io::Read>(
     disk: &mut T,
     offset: u64,
-    path: &str,
+    file: &mut S,
+    file_len: u64,
     sector_size: usize,
     limit: u64,
 ) -> io::Result<()> {
-    let mut f = File::open(path)?;
-    let f_len = f.metadata()?.len();
-
     // Check the file wouldn't cross the limit
-    if limit > 0 && offset + f_len > limit {
+    if limit > 0 && offset + file_len > limit {
         return Err(std::io::Error::other(format!(
             "Cannot write the {}-byte long file starting from {} without crossing the limit {}.",
-            f_len, offset, limit
+            file_len, offset, limit
         )));
     }
 
     let mut v: Vec<u8> = vec![0; sector_size];
-    for s in (0..f_len).step_by(sector_size) {
-        let bytes_read = f.read(&mut v)?;
+    for s in (0..file_len).step_by(sector_size) {
+        let bytes_read = file.read(&mut v)?;
         v.truncate(bytes_read);
         write_at(disk, offset + s, &v)?;
     }

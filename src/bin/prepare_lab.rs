@@ -82,10 +82,14 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
 }
 
 fn hide_flag_after_mbr(flag_file_path: &str, disk_file: &mut File, fat_vol: &FATVol, disk: &Disk) {
+    let mut f = File::open(flag_file_path).unwrap();
+    let f_len = f.metadata().unwrap().len();
+
     write_file_at(
         disk_file,
         SECTOR_SIZE as u64,
-        flag_file_path,
+        &mut f,
+        f_len,
         SECTOR_SIZE,
         (fat_vol.start() * disk.sector_size() as u32).into(),
     )
@@ -125,5 +129,8 @@ fn hide_file_in_bad_clusters(flag_file_path: &str, disk: &mut File, fat_vol: &FA
 
     let offset = fat_vol.clus_to_sector(chain_start) as u64 * SECTOR_SIZE as u64;
     let limit = offset + cluster_cnt as u64 * fat_vol.cluster_size() as u64;
-    write_file_at(disk, offset, flag_file_path, SECTOR_SIZE, limit).unwrap()
+
+    let mut f = File::open(flag_file_path).unwrap();
+    let f_len = f.metadata().unwrap().len();
+    write_file_at(disk, offset, &mut f, f_len, SECTOR_SIZE, limit).unwrap()
 }

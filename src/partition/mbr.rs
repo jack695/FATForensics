@@ -3,8 +3,8 @@
 //!
 //! It defines structures and methods to interpret partition table entries,
 //! validate partition tables, and extract relevant metadata from disk images.
+use binread::io;
 use getset::Getters;
-use std::fs::File;
 use std::vec;
 
 use super::disk_error::DiskError;
@@ -122,7 +122,11 @@ impl Mbr {
     /// # Returns
     /// - `Ok(MBR)` if the MBR is successfully parsed.
     /// - `Err(std::io::Error)` if an error occurs during reading or parsing.
-    pub fn from_file(file: &mut File, sector_size: usize) -> Result<Mbr, DiskError> {
+    pub fn from<T: io::Read + io::Seek>(
+        file: &mut T,
+        disk_len: u64,
+        sector_size: usize,
+    ) -> Result<Mbr, DiskError> {
         let mut buffer = vec![0; sector_size];
         utils::read_sector(file, 0, sector_size, &mut buffer)?;
 
@@ -138,7 +142,7 @@ impl Mbr {
         let mbr = Mbr {
             pt_entries,
             boot_signature: BootSignature::from_u16(utils::u16_at(&buffer, 510)),
-            sector_cnt: file.metadata()?.len() / sector_size as u64,
+            sector_cnt: disk_len / sector_size as u64,
         };
 
         mbr.validate()
