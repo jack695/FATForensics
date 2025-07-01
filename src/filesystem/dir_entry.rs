@@ -8,6 +8,8 @@ use binread::{BinRead, BinReaderExt};
 use getset::Getters;
 use std::fmt;
 use std::io;
+use std::io::{Error, ErrorKind};
+use std::str::Utf8Error;
 
 use crate::filesystem::fat_error::FATError;
 
@@ -82,21 +84,50 @@ impl DirEntry {
     /// - `false`: If the filename doesn't match or is invalid
     pub fn same_short_name(&self, name: &str) -> bool {
         let parts: Vec<&str> = name.split('.').collect();
-        let (name, ext) = match parts.as_slice() {
-            [name] => (format!("{:<8}", name.to_uppercase()), format!("{:<3}", "")),
-            [name, ext] => (
-                format!("{:<8}", name.to_uppercase()),
-                format!("{:<3}", ext.to_uppercase()),
-            ),
-            _ => return false,
+        let shortname = match Self::to_8_3_name(parts.first().unwrap(), parts.get(1).copied()) {
+            Ok(short_name) => short_name,
+            Err(_) => return false,
         };
 
-        // Unecessary checks, but highlights FAT specifications
-        if name.len() > 8 || ext.len() > 3 {
-            return false;
-        }
+        shortname == self.name
+    }
 
-        format!("{}{}", name, ext).as_bytes() == self.name
+    fn to_8_3_name(name: &str, ext_opt: Option<&str>) -> Result<Vec<u8>, io::Error> {
+        if name.len() > 8 {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "A short filename is composed of max 8 characters and max 3 characters for the extension.".to_string(),
+            ));
+        }
+        let name = match ext_opt {
+            Some(ext) => format!(
+                "{:<8}{:<3}",
+                name.to_ascii_uppercase(),
+                ext.to_ascii_uppercase()
+            ),
+            None => format!("{:<8}{:<3}", name.to_ascii_uppercase(), ""),
+        };
+
+        Ok(name.as_bytes().to_vec())
+    }
+
+    fn from_8_3_name(&self) -> Result<String, Utf8Error> {
+        let raw_name = &self.name[0..8];
+        let raw_ext = &self.name[8..11];
+
+        // Convert &[u8] to &str assuming ASCII encoding
+        let name = std::str::from_utf8(raw_name)?.trim_end();
+        let ext = std::str::from_utf8(raw_ext)?.trim_end();
+
+        if ext.is_empty() {
+            Ok(name.to_ascii_uppercase())
+        } else {
+            Ok(format!(
+                "{}.{}",
+                name.to_ascii_uppercase(),
+                ext.to_ascii_uppercase()
+            ))
+        }
     }
 
     /// Returns the complete first cluster number for this entry.
@@ -129,16 +160,14 @@ impl fmt::Display for DirEntry {
     ///
     /// # Returns
     /// - A string representation showing the filename and file size
-    ///
-    /// # Format
-    /// - `"FILENAME.EXT" 1234B` for files
-    /// - `"DIRNAME   " 0B` for directories
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "\"{}\" {}B",
-            String::from_utf8_lossy(&self.name),
-            self.file_size
-        )
+        match self.from_8_3_name() {
+            Ok(fmt_name) => {
+                write!(f, "\"{}\" {}B", fmt_name, self.file_size)
+            }
+            _ => {
+                write!(f, "\"{:?}\" {}B", self.name, self.file_size)
+            }
+        }
     }
 }

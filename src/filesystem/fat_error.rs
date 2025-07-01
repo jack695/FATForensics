@@ -95,6 +95,10 @@ pub enum FATError {
     /// Invalid cluster number
     #[error("Invalid cluster number: `{0}`")]
     InvalidClusterError(u32),
+
+    /// Invalid file/dir name
+    #[error("Invalid file or directory name: `{0}`")]
+    InvalidFilenameError(String),
 }
 
 /// Converts standard I/O errors into FATError.
