@@ -7,6 +7,7 @@ use fat_forensics::FATVol;
 use fat_forensics::Volume;
 use fat_forensics::traits::SlackWriter;
 use fat_forensics::utils::write_file_at;
+use log::error;
 use std::env;
 use std::fs;
 use std::fs::File;
@@ -20,7 +21,7 @@ fn main() {
     let (disk_path, flag_dir_path) = match args.len() {
         3 => (args[1].as_str(), args[2].as_str()),
         _ => {
-            eprintln!(
+            error!(
                 "Please provide the path to the disk image file and the path to the directory containing all flag files."
             );
             return;
@@ -29,7 +30,7 @@ fn main() {
 
     // Open the disk
     let disk = Disk::from_file(&disk_path, SECTOR_SIZE, false).unwrap_or_else(|e| {
-        eprintln!("Error: {}", e);
+        error!("Error: {}", e);
         std::process::exit(1);
     });
 
@@ -42,7 +43,7 @@ fn main() {
     let vol = match &disk.volumes().get(0) {
         Some(Volume::FAT32(fat_vol)) => fat_vol,
         _ => {
-            eprintln!("The disk should contain one FAT32 volume.");
+            error!("The disk should contain one FAT32 volume.");
             std::process::exit(1);
         }
     };
@@ -97,7 +98,7 @@ fn hide_flag_in_volume_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FA
     fat_vol
         .write_to_volume_slack(disk, &data)
         .unwrap_or_else(|e| {
-            eprintln!("Failed to write to volume slack: {}", e);
+            error!("Failed to write to volume slack: {}", e);
             std::process::exit(1);
         });
 }
@@ -108,7 +109,7 @@ fn hide_flag_in_file_slack(flag_file_path: &str, disk: &mut File, fat_vol: &FATV
     fat_vol
         .write_to_file_slack(disk, Path::new("1/t.txt"), &data)
         .unwrap_or_else(|e| {
-            eprintln!("Failed to write to volume slack: {}", e);
+            error!("Failed to write to volume slack: {}", e);
             std::process::exit(1);
         });
 }
@@ -118,7 +119,7 @@ fn hide_file_in_bad_clusters(flag_file_path: &str, disk: &mut File, fat_vol: &FA
 
     let cluster_cnt = (data.len() as u32).div_ceil(fat_vol.cluster_size());
     let chain_start = fat_vol.mark_as_bad(cluster_cnt).unwrap_or_else(|e| {
-        eprintln!("Failed to mark the file's clusters as bad: {}", e);
+        error!("Failed to mark the file's clusters as bad: {}", e);
         std::process::exit(1);
     });
 

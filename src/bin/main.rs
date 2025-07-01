@@ -6,6 +6,7 @@
 use fat_forensics::Disk;
 use fat_forensics::commands::Command;
 use fat_forensics::utils::write_file_at;
+use log::error;
 use std::{
     fs::File,
     io::{self, Write},
@@ -50,21 +51,21 @@ fn main() {
                         run_state.disk = Some(disk);
                     }
                     Err(err) => {
-                        eprintln!("{}", err);
+                        error!("{}", err);
                     }
                 }
             }
             Command::Quit => break,
             Command::Print => match &run_state.disk {
                 Some(disk) => disk.print_layout(3),
-                None => eprintln!("Open disk image first"),
+                None => error!("Open disk image first"),
             },
             Command::Partition(vol_nb) => {
                 let part_index: isize = vol_nb as isize - 1;
 
                 if let Some(disk) = &run_state.disk {
                     if part_index < 0 || part_index >= disk.vol_count() as isize {
-                        eprintln!(
+                        error!(
                             "Invalid volume number. There are {} valid volumes on disk.",
                             disk.vol_count()
                         );
@@ -72,7 +73,7 @@ fn main() {
 
                     run_state.vol_nb = Some(vol_nb);
                 } else {
-                    eprintln!("Open disk image first");
+                    error!("Open disk image first");
                 }
             }
             Command::Skip => run_state.bpb_validation = false,
@@ -92,15 +93,15 @@ fn main() {
                         0,
                     ) {
                         Ok(()) => println!("Write succeeded!"),
-                        Err(err) => eprintln!("Write failed: {}", err),
+                        Err(err) => error!("Write failed: {}", err),
                     }
                 }
                 None => {
-                    eprintln!("Open disk image first");
+                    error!("Open disk image first");
                 }
             },
-            Command::Unknown(s) => eprintln!("Unknown command: {:?}", s),
-            Command::Invalid(s) => eprintln!("{s}"),
+            Command::Unknown(s) => error!("Unknown command: {:?}", s),
+            Command::Invalid(s) => error!("{s}"),
             Command::Empty => {}
         }
     }
