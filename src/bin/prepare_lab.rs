@@ -29,7 +29,7 @@ fn main() {
     };
 
     // Open the disk
-    let disk = Disk::from_file(disk_path, SECTOR_SIZE, false).unwrap_or_else(|e| {
+    let disk = Disk::from_file(Path::new(&disk_path), SECTOR_SIZE, false).unwrap_or_else(|e| {
         error!("Error: {}", e);
         std::process::exit(1);
     });

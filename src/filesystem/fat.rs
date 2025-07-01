@@ -24,7 +24,7 @@ pub struct FATVol {
     bpb: Bpb,
     start: u32,
     end: u32,
-    disk_path: String,
+    disk_path: PathBuf,
 }
 
 impl FATVol {
@@ -44,7 +44,7 @@ impl FATVol {
     /// - Returns `FATError::IOError` if reading from the file fails
     /// - Returns various `FATError` variants if validation fails and `validate` is true
     pub fn from_file(
-        disk_path: &str,
+        disk_path: &Path,
         start: u32,
         sector_cnt: u32,
         validate: bool,
@@ -57,7 +57,7 @@ impl FATVol {
             bpb,
             start,
             end: start + sector_cnt,
-            disk_path: disk_path.to_string(),
+            disk_path: disk_path.to_path_buf(),
         })
     }
 
@@ -146,7 +146,7 @@ impl FATVol {
     }
 
     fn read_cluster(&self, cluster_nb: u32) -> io::Result<Vec<u8>> {
-        let mut file = File::open(self.disk_path.as_str()).unwrap();
+        let mut file = File::open(&self.disk_path).unwrap();
 
         let cluster_size = *self.bpb.sec_per_clus() as u16 * *self.bpb.bytes_per_sec();
         let mut buf: Vec<u8> = vec![0; cluster_size.into()];
@@ -183,7 +183,7 @@ impl FATVol {
     }
 
     fn get_next_cluster(&self, cluster: u32) -> u32 {
-        let mut file = File::open(self.disk_path.as_str()).unwrap();
+        let mut file = File::open(&self.disk_path).unwrap();
         let mut buf = vec![];
         let sector = self.fat_start()
             + (cluster * self.fat_entry_bit_sz() / 8) / (*self.bpb.bytes_per_sec() as u32);

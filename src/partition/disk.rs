@@ -8,6 +8,7 @@
 
 use getset::Getters;
 use std::fs::File;
+use std::path::{Path, PathBuf};
 
 use super::disk_error::DiskError;
 use super::mbr::Mbr;
@@ -34,7 +35,7 @@ pub enum Volume {
 pub struct Disk {
     /// The open disk image file.
     #[get = "pub"]
-    file_path: String,
+    file_path: PathBuf,
     /// The partition table found on the disk
     #[get = "pub"]
     part_table: PartTable,
@@ -62,7 +63,7 @@ impl Disk {
     /// - Returns `DiskError::Io` if the file cannot be opened or read
     /// - Returns `DiskError::Mbr` if the MBR cannot be parsed
     /// - Individual volume parsing errors are logged but don't cause function failure
-    pub fn from_file(path: &str, sector_size: usize, validation: bool) -> Result<Self, DiskError> {
+    pub fn from_file(path: &Path, sector_size: usize, validation: bool) -> Result<Self, DiskError> {
         let mut f = File::options().read(true).write(true).open(path)?;
         let f_len = f.metadata()?.len();
 
@@ -94,7 +95,7 @@ impl Disk {
         }
 
         let disk = Disk {
-            file_path: path.to_string(),
+            file_path: path.to_path_buf(),
             part_table: PartTable::Mbr(mbr),
             volumes: vol,
             sector_size,

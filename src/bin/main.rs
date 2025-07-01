@@ -10,6 +10,7 @@ use log::{error, warn};
 use std::{
     fs::File,
     io::{self, Write},
+    path::Path,
 };
 
 /// Represents the runtime state of the program.
@@ -46,7 +47,11 @@ fn main() {
 
         match cmd {
             Command::Open(path) => {
-                match Disk::from_file(&path, run_state.sector_size, run_state.bpb_validation) {
+                match Disk::from_file(
+                    Path::new(&path),
+                    run_state.sector_size,
+                    run_state.bpb_validation,
+                ) {
                     Ok(disk) => {
                         run_state.disk = Some(disk);
                     }
@@ -82,7 +87,7 @@ fn main() {
             }
             Command::Skip => run_state.bpb_validation = false,
             Command::Write((file_path, sector)) => {
-                write_file_to_disk(&mut run_state, &file_path, sector)
+                write_file_to_disk(&mut run_state, Path::new(&file_path), sector)
             }
             Command::Unknown(s) => error!("Unknown command: {:?}", s),
             Command::Invalid(s) => error!("{s}"),
@@ -91,7 +96,7 @@ fn main() {
     }
 }
 
-fn write_file_to_disk(run_state: &mut RunState, file_path: &str, sector: u64) {
+fn write_file_to_disk(run_state: &mut RunState, file_path: &Path, sector: u64) {
     let disk = match &mut run_state.disk {
         Some(disk) => disk,
         None => {
@@ -116,7 +121,11 @@ fn write_file_to_disk(run_state: &mut RunState, file_path: &str, sector: u64) {
     // Open the file to copy on disk
     let mut f = match File::open(file_path) {
         Err(e) => {
-            error!("Can't open {}: {}", file_path, e);
+            error!(
+                "Can't open {}: {}",
+                file_path.to_str().unwrap_or("invalid_file_name"),
+                e
+            );
             return;
         }
         Ok(file) => file,
@@ -124,7 +133,11 @@ fn write_file_to_disk(run_state: &mut RunState, file_path: &str, sector: u64) {
     let f_len = match f.metadata() {
         Ok(metadata) => metadata.len(),
         Err(e) => {
-            error!("Can't read meatadata of {}: {}", file_path, e);
+            error!(
+                "Can't read meatadata of {}: {}",
+                file_path.to_str().unwrap_or("invalid_file_name"),
+                e
+            );
             return;
         }
     };
