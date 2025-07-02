@@ -20,6 +20,8 @@ pub enum Command {
     Skip,
     /// Write a file to a given sector: (file path, starting sector).
     Write((String, u64)),
+    /// Print the tree directory of every supported volume
+    Tree,
     /// Command for an unknown input, encapsulating the raw input as a `String`.
     Unknown(String),
     /// Command for invalid input, encapsulating an error message as a `String`.
@@ -88,6 +90,7 @@ impl Command {
                     )),
                 }
             }
+            Some("tree") => Command::Tree,
             Some(other) => Command::Unknown(other.to_string()),
             None => Command::Empty,
         }

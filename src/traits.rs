@@ -7,8 +7,16 @@ use std::{
     io::{Seek, Write},
     path::Path,
 };
+use thiserror::Error;
 
 use crate::filesystem::fat_error::FATError;
+
+/// Wrapper around all the potential errors for the different trait implementers.
+#[derive(Error, Debug)]
+pub enum TraitError {
+    #[error("FAT Error: {0}")]
+    FATError(#[from] FATError),
+}
 
 /// Trait for displaying the layout of a structure (e.g., disk, partition, volume).
 ///
@@ -23,6 +31,10 @@ pub trait LayoutDisplay {
     /// - `Ok(str)` A `String` containing the formatted layout.
     /// - `Err(Error)` if the string formatting failed.
     fn display_layout(&self, indent: u8) -> Result<String, std::fmt::Error>;
+}
+
+pub trait TreeDisplay {
+    fn display_tree(&self) -> Result<(), TraitError>;
 }
 
 /// Trait for writing data to slack space in a volume or file.

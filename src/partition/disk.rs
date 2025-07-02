@@ -14,7 +14,8 @@ use super::disk_error::DiskError;
 use super::mbr::Mbr;
 use super::mbr::PTType;
 use crate::filesystem::fat::FATVol;
-use crate::traits::LayoutDisplay;
+use crate::traits::TreeDisplay;
+use crate::traits::{LayoutDisplay, TraitError};
 
 /// Represents different types of partition tables that can be found on a disk.
 /// Currently only MBR is supported.
@@ -126,6 +127,19 @@ impl Disk {
                 }
                 Volume::Unsupported => {
                     print!("\nUnsupported Volume Type.\n")
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn print_tree(&self) -> Result<(), TraitError> {
+        for vol in self.volumes.iter() {
+            match vol {
+                Volume::FAT32(vol) => vol.display_tree()?,
+                Volume::Unsupported => {
+                    print!("\nUnsupported Volume Type.\n");
                 }
             }
         }

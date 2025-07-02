@@ -11,7 +11,8 @@ use std::io;
 use std::io::{Error, ErrorKind};
 use std::str::Utf8Error;
 
-use crate::filesystem::fat_error::FATError;
+use super::fat_error::FATError;
+use super::fat_type::FATType;
 
 /// FAT directory entry structure.
 ///
@@ -59,6 +60,20 @@ pub struct DirEntry {
 }
 
 impl DirEntry {
+    const SELF: [u8; 11] = [46, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32];
+    const PARENT: [u8; 11] = [46, 46, 32, 32, 32, 32, 32, 32, 32, 32, 32];
+
+    const ATTR_READ_ONLY: u8 = 0x01;
+    const ATTR_HIDDEN: u8 = 0x02;
+    const ATTR_SYSTEM: u8 = 0x04;
+    const ATTR_VOLUME_ID: u8 = 0x08;
+    const ATTR_DIRECTORY: u8 = 0x10;
+    const ATTR_ARCHIVE: u8 = 0x20;
+    const ATTR_LONG_NAME: u8 = DirEntry::ATTR_READ_ONLY
+        | DirEntry::ATTR_HIDDEN
+        | DirEntry::ATTR_SYSTEM
+        | DirEntry::ATTR_VOLUME_ID;
+
     /// Creates a directory entry from a byte slice.
     ///
     /// # Parameters
@@ -147,7 +162,27 @@ impl DirEntry {
     /// # Implementation Details
     /// Checks if the directory attribute bit (0x10) is set in the attributes field
     pub fn is_dir(&self) -> bool {
-        self.attr & 0x10 != 0
+        self.attr & DirEntry::ATTR_DIRECTORY == DirEntry::ATTR_DIRECTORY
+    }
+
+    pub fn is_regular_dir(&self) -> bool {
+        self.is_dir() && self.name != DirEntry::SELF && self.name != DirEntry::PARENT
+    }
+
+    pub fn is_eof(cluster: u32, fat_type: FATType) -> bool {
+        match fat_type {
+            FATType::FAT12 => cluster >= 0x0FF8,
+            FATType::FAT16 => cluster >= 0xFFF8,
+            FATType::FAT32 => cluster >= 0x0FFFFFF8,
+        }
+    }
+
+    pub fn bad_cluster_marker(fat_type: FATType) -> u32 {
+        match fat_type {
+            FATType::FAT12 => 0x0FF7,
+            FATType::FAT16 => 0xFFF7,
+            FATType::FAT32 => 0x0FFFFFF7,
+        }
     }
 }
 
@@ -157,12 +192,36 @@ impl fmt::Display for DirEntry {
     /// # Returns
     /// - A string representation showing the filename and file size
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let attr_str = if self.attr & DirEntry::ATTR_LONG_NAME == DirEntry::ATTR_LONG_NAME {
+            "long_name".to_string()
+        } else {
+            let mut parts = vec![];
+
+            if self.attr & DirEntry::ATTR_READ_ONLY == DirEntry::ATTR_READ_ONLY {
+                parts.push("read_only");
+            }
+            if self.attr & DirEntry::ATTR_HIDDEN == DirEntry::ATTR_HIDDEN {
+                parts.push("hidden");
+            }
+            if self.attr & DirEntry::ATTR_SYSTEM == DirEntry::ATTR_SYSTEM {
+                parts.push("system");
+            }
+            if self.attr & DirEntry::ATTR_VOLUME_ID == DirEntry::ATTR_VOLUME_ID {
+                parts.push("volume_id");
+            }
+            if self.attr & DirEntry::ATTR_ARCHIVE == DirEntry::ATTR_ARCHIVE {
+                parts.push("archive");
+            }
+
+            parts.join("|")
+        };
+
         match self.fmt_name() {
             Ok(fmt_name) => {
-                write!(f, "\"{}\" {}B", fmt_name, self.file_size)
+                write!(f, "{} {}B", fmt_name, self.file_size)
             }
             _ => {
-                write!(f, "\"{:?}\" {}B", self.name, self.file_size)
+                write!(f, "{:?} {}B {}", self.name, self.file_size, attr_str)
             }
         }
     }

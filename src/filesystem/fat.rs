@@ -18,7 +18,7 @@ use super::dir_entry::DirEntry;
 use super::fat_error::FATError;
 use super::fat_type::FATType;
 use crate::filesystem::dir_entry;
-use crate::traits::{LayoutDisplay, SlackWriter};
+use crate::traits::{LayoutDisplay, SlackWriter, TraitError, TreeDisplay};
 use crate::utils::{read_sector, u32_at, write_at};
 
 /// Structure for a FAT volume.
@@ -179,7 +179,7 @@ impl FATVol {
         let mut all_clusters = vec![];
         let mut cluster = cluster;
 
-        while !self.is_eof(cluster) {
+        while !DirEntry::is_eof(cluster, self.bpb.fat_type()) {
             all_clusters.push(cluster);
             cluster = self.get_next_cluster(cluster);
         }
@@ -222,7 +222,10 @@ impl FATVol {
             if i == cluster_cnt {
                 // Found a list of `cluster_cnt` free clusters
                 for cluster in start..start + cluster_cnt {
-                    self.update_fat_entry(cluster, self.bad_cluster_marker())?;
+                    self.update_fat_entry(
+                        cluster,
+                        DirEntry::bad_cluster_marker(self.bpb.fat_type()),
+                    )?;
                 }
 
                 return Ok(start);
@@ -284,22 +287,6 @@ impl FATVol {
         Ok(())
     }
 
-    fn is_eof(&self, cluster: u32) -> bool {
-        match self.bpb.fat_type() {
-            FATType::FAT12 => cluster >= 0x0FF8,
-            FATType::FAT16 => cluster >= 0xFFF8,
-            FATType::FAT32 => cluster >= 0x0FFFFFF8,
-        }
-    }
-
-    fn bad_cluster_marker(&self) -> u32 {
-        match self.bpb.fat_type() {
-            FATType::FAT12 => 0x0FF7,
-            FATType::FAT16 => 0xFFF7,
-            FATType::FAT32 => 0x0FFFFFF7,
-        }
-    }
-
     fn fat_entry_bit_sz(&self) -> u32 {
         match self.bpb.fat_type() {
             FATType::FAT12 => 12,
@@ -346,6 +333,19 @@ impl FATVol {
 
     fn data_end(&self) -> u32 {
         self.data_start() + self.bpb.cluster_count() * *self.bpb.sec_per_clus() as u32
+    }
+
+    fn print_dir_rec(&self, cluster: u32, indent: usize) -> Result<(), FATError> {
+        let dir_entries = self.list_dir(cluster)?;
+
+        for entry in dir_entries {
+            println!("{} {}", " ".repeat(indent), entry);
+            if entry.is_regular_dir() {
+                self.print_dir_rec(entry.cluster_number(), indent + 3)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -428,6 +428,22 @@ impl LayoutDisplay for FATVol {
         )?;
 
         Ok(out)
+    }
+}
+
+impl TreeDisplay for FATVol {
+    fn display_tree(&self) -> Result<(), TraitError> {
+        match self.bpb.fat_type() {
+            FATType::FAT32 => self.print_dir_rec(*self.bpb.root_clus(), 0)?,
+            fat_type => {
+                return Err(TraitError::FATError(FATError::UnsupportedFATType(format!(
+                    "Displaying the directory tree for {} is currently not supported.",
+                    fat_type,
+                ))));
+            }
+        }
+
+        Ok(())
     }
 }
 

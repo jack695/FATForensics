@@ -28,6 +28,8 @@ struct RunState {
 }
 
 fn main() {
+    stderrlog::new().module(module_path!()).init().unwrap();
+
     let mut run_state = RunState {
         disk: None,
         vol_nb: None,
@@ -82,12 +84,21 @@ fn main() {
 
                     run_state.vol_nb = Some(vol_nb);
                 } else {
-                    error!("Open disk image first");
+                    warn!("Open disk image first");
                 }
             }
             Command::Skip => run_state.bpb_validation = false,
             Command::Write((file_path, sector)) => {
                 write_file_to_disk(&mut run_state, Path::new(&file_path), sector)
+            }
+            Command::Tree => {
+                if let Some(disk) = run_state.disk.as_ref() {
+                    if let Err(err) = disk.print_tree() {
+                        error!("Tree printing failed: {err}");
+                    }
+                } else {
+                    warn!("Open disk image first")
+                }
             }
             Command::Unknown(s) => error!("Unknown command: {s:?}"),
             Command::Invalid(s) => error!("{s}"),
