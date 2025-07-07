@@ -41,10 +41,10 @@ The `prepare_lab` CLI (`src/bin/prepare_lab.rs`) is designed for instructors or 
 
 ```sh
 # Analyze a disk image interactively
-cargo run --bin main
+cargo run
 
 # Prepare a lab image with hidden flags
-cargo run --bin prepare_lab <disk.img> <flags_dir>
+cargo run --bin prepare_lab data/base.img data/flags
 ```
 
 ## Limitations
@@ -89,11 +89,11 @@ Finally, format the partition as FAT32.
 
 ### Mounting the image on MacOS
 
-Start with these two commands: 
+Start with these two commands:
 > hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount <PATH_TO_IMAGE>
 > mount -t msdos /dev/<DISK> /Volumes/fatvol
 
 Modify the volume as you wish, then run the 2 final commands:
 
-> umount /Volumes/fatvol                     
+> umount /Volumes/fatvol
 > hdiutil detach /dev/disk4
