@@ -165,10 +165,19 @@ impl DirEntry {
         self.attr & DirEntry::ATTR_DIRECTORY == DirEntry::ATTR_DIRECTORY
     }
 
+    /// Returns true if this entry is a regular directory (not "." or ".." entries).
     pub fn is_regular_dir(&self) -> bool {
         self.is_dir() && self.name != DirEntry::SELF && self.name != DirEntry::PARENT
     }
 
+    /// Returns true if the given cluster number is the end-of-chain marker for the given FAT type.
+    ///
+    /// # Parameters
+    /// - `cluster`: The cluster number to check.
+    /// - `fat_type`: The FAT type (FAT12, FAT16, FAT32).
+    ///
+    /// # Returns
+    /// - `true` if the cluster number is an end-of-chain marker for the given FAT type.
     pub fn is_eof(cluster: u32, fat_type: FATType) -> bool {
         match fat_type {
             FATType::FAT12 => cluster >= 0x0FF8,
@@ -177,6 +186,13 @@ impl DirEntry {
         }
     }
 
+    /// Returns the value used to mark a cluster as bad for the given FAT type.
+    ///
+    /// # Parameters
+    /// - `fat_type`: The FAT type (FAT12, FAT16, FAT32).
+    ///
+    /// # Returns
+    /// - The value used to mark a cluster as bad for the given FAT type.
     pub fn bad_cluster_marker(fat_type: FATType) -> u32 {
         match fat_type {
             FATType::FAT12 => 0x0FF7,

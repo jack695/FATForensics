@@ -295,46 +295,15 @@ impl FATVol {
         }
     }
 
-    /// Returns the starting sector of the root directory.
+    /// Recursively prints the directory tree starting from the given cluster.
+    ///
+    /// # Parameters
+    /// - `cluster`: The starting cluster number for the directory.
+    /// - `indent`: The indentation level for pretty-printing.
     ///
     /// # Returns
-    /// - `u32`: The starting sector of the root directory.
-    pub fn root_dir_sector(&self) -> u32 {
-        match self.bpb.fat_type() {
-            FATType::FAT32 => self.clus_to_sector(*self.bpb.root_clus()),
-            _ => self.rsvd_start(),
-        }
-    }
-
-    pub fn clus_to_sector(&self, cluster: u32) -> u32 {
-        self.data_start() + (cluster - 2) * *self.bpb.sec_per_clus() as u32
-    }
-
-    pub fn start(&self) -> u32 {
-        self.start
-    }
-
-    fn rsvd_start(&self) -> u32 {
-        self.start()
-    }
-
-    fn fat_start(&self) -> u32 {
-        self.rsvd_start() + u32::from(*self.bpb.rsvd_sec_cnt())
-    }
-
-    fn root_start(&self) -> u32 {
-        self.fat_start() + self.bpb.fat_sz() * *self.bpb.num_fat() as u32
-    }
-
-    pub fn data_start(&self) -> u32 {
-        self.root_start()
-            + (*self.bpb.root_ent_cnt() as u32 * 32).div_ceil(*self.bpb.bytes_per_sec() as u32)
-    }
-
-    fn data_end(&self) -> u32 {
-        self.data_start() + self.bpb.cluster_count() * *self.bpb.sec_per_clus() as u32
-    }
-
+    /// - `Ok(())` if the directory tree is printed successfully.
+    /// - `Err(FATError)` if an error occurs while listing directories.
     fn print_dir_rec(&self, cluster: u32, indent: usize) -> Result<(), FATError> {
         let dir_entries = self.list_dir(cluster)?;
 
@@ -346,6 +315,48 @@ impl FATVol {
         }
 
         Ok(())
+    }
+
+    /// Converts a cluster number to its corresponding sector number.
+    ///
+    /// # Parameters
+    /// - `cluster`: The cluster number to convert.
+    ///
+    /// # Returns
+    /// - The sector number corresponding to the given cluster.
+    pub fn clus_to_sector(&self, cluster: u32) -> u32 {
+        self.data_start() + (cluster - 2) * *self.bpb.sec_per_clus() as u32
+    }
+
+    /// Returns the starting cluster of the volume.
+    pub fn start(&self) -> u32 {
+        self.start
+    }
+
+    /// Returns the starting sector of the reserved region.
+    fn rsvd_start(&self) -> u32 {
+        self.start()
+    }
+
+    /// Returns the starting sector of the first FAT.
+    fn fat_start(&self) -> u32 {
+        self.rsvd_start() + u32::from(*self.bpb.rsvd_sec_cnt())
+    }
+
+    /// Returns the starting sector of the root directory.
+    fn root_start(&self) -> u32 {
+        self.fat_start() + self.bpb.fat_sz() * *self.bpb.num_fat() as u32
+    }
+
+    /// Returns the starting sector of the data region.
+    pub fn data_start(&self) -> u32 {
+        self.root_start()
+            + (*self.bpb.root_ent_cnt() as u32 * 32).div_ceil(*self.bpb.bytes_per_sec() as u32)
+    }
+
+    /// Returns the ending sector of the data region.
+    fn data_end(&self) -> u32 {
+        self.data_start() + self.bpb.cluster_count() * *self.bpb.sec_per_clus() as u32
     }
 }
 
@@ -437,8 +448,7 @@ impl TreeDisplay for FATVol {
             FATType::FAT32 => self.print_dir_rec(*self.bpb.root_clus(), 0)?,
             fat_type => {
                 return Err(TraitError::FATError(FATError::UnsupportedFATType(format!(
-                    "Displaying the directory tree for {} is currently not supported.",
-                    fat_type,
+                    "Displaying the directory tree for {fat_type} is currently not supported."
                 ))));
             }
         }

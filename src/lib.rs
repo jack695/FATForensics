@@ -3,7 +3,7 @@
 //!
 //! This crate provides tools for:
 //! - Parsing and validating Master Boot Records (MBR)
-//! - Interacting with FAT32 filesystems 
+//! - Interacting with FAT32 filesystems
 //! - Handling user commands for disk and filesystem operations
 //! - Printing disk and filesystem layouts
 //!
