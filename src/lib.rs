@@ -24,5 +24,3 @@ pub mod utils;
 pub use crate::filesystem::fat::FATVol;
 /// Disk abstraction with partition and volume management (see [`partition::disk::Disk`]).
 pub use crate::partition::disk::Disk;
-/// Enum for supported volume types (see [`partition::disk::Volume`]).
-pub use crate::partition::disk::Volume;

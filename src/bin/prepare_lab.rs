@@ -4,8 +4,9 @@
 
 use fat_forensics::Disk;
 use fat_forensics::FATVol;
-use fat_forensics::Volume;
+use fat_forensics::traits::LayoutDisplay;
 use fat_forensics::traits::SlackWriter;
+use fat_forensics::traits::TreeDisplay;
 use fat_forensics::utils::write_file_at;
 use log::error;
 use std::env;
@@ -41,7 +42,7 @@ fn main() {
         "The number of volumes should be exactly one."
     );
     let vol = match disk.volumes().first() {
-        Some(Volume::FAT32(fat_vol)) => fat_vol,
+        Some(fat_vol) => fat_vol,
         _ => {
             error!("The disk should contain one FAT32 volume.");
             std::process::exit(1);
@@ -62,7 +63,12 @@ fn main() {
     }
 }
 
-fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVol) {
+fn hide_flag<T: LayoutDisplay + TreeDisplay, U: LayoutDisplay>(
+    flag_idx: usize,
+    flag_file_path: &str,
+    disk: &Disk<T, U>,
+    fat_vol: &FATVol,
+) {
     let mut disk_file = File::options()
         .read(true)
         .write(true)
@@ -81,7 +87,12 @@ fn hide_flag(flag_idx: usize, flag_file_path: &str, disk: &Disk, fat_vol: &FATVo
     }
 }
 
-fn hide_flag_after_mbr(flag_file_path: &str, disk_file: &mut File, fat_vol: &FATVol, disk: &Disk) {
+fn hide_flag_after_mbr<T: LayoutDisplay + TreeDisplay, U: LayoutDisplay>(
+    flag_file_path: &str,
+    disk_file: &mut File,
+    fat_vol: &FATVol,
+    disk: &Disk<T, U>,
+) {
     let mut f = File::open(flag_file_path).unwrap();
     let f_len = f.metadata().unwrap().len();
 

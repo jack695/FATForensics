@@ -3,9 +3,10 @@
 //! The program provides an interactive command-line interface for analyzing FAT32 disk images.
 //! Users can open disk images, print their layout, and quit the program using commands.
 
-use fat_forensics::Disk;
 use fat_forensics::commands::Command;
+use fat_forensics::traits::TreeDisplay;
 use fat_forensics::utils::write_file_at;
+use fat_forensics::{Disk, traits::LayoutDisplay};
 use log::{error, warn};
 use std::{
     fs::File,
@@ -16,9 +17,9 @@ use std::{
 /// Represents the runtime state of the program.
 ///
 /// This struct keeps track of the currently opened file and its associated Master Boot Record (MBR).
-struct RunState {
+struct RunState<T: LayoutDisplay + TreeDisplay, U: LayoutDisplay> {
     /// The currently opened disk image.
-    disk: Option<Disk>,
+    disk: Option<Disk<T, U>>,
     /// Volume in inspection mode
     vol_nb: Option<u8>,
     /// Enable the validation of the bpb
@@ -107,7 +108,11 @@ fn main() {
     }
 }
 
-fn write_file_to_disk(run_state: &mut RunState, file_path: &Path, sector: u64) {
+fn write_file_to_disk<T: LayoutDisplay + TreeDisplay, U: LayoutDisplay>(
+    run_state: &mut RunState<T, U>,
+    file_path: &Path,
+    sector: u64,
+) {
     let disk = match &mut run_state.disk {
         Some(disk) => disk,
         None => {

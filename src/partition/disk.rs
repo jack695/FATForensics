@@ -17,40 +17,24 @@ use crate::filesystem::fat::FATVol;
 use crate::traits::TreeDisplay;
 use crate::traits::{LayoutDisplay, TraitError};
 
-/// Represents different types of partition tables that can be found on a disk.
-/// Currently only MBR is supported.
-enum PartTable {
-    /// Master Boot Record partition table
-    Mbr(Mbr),
-}
-
-/// Represents different types of volumes that can be found in partitions.
-/// Currently only FAT32 is supported.
-pub enum Volume {
-    /// FAT32 volume
-    FAT32(FATVol),
-    /// Placeholder for unsupported volume types
-    Unsupported,
-}
-
 /// Represents a disk image with its partition table and volumes.
 #[derive(Getters)]
-pub struct Disk {
+pub struct Disk<T: TreeDisplay + LayoutDisplay, U: LayoutDisplay> {
     /// The open disk image file path.
     #[get = "pub"]
     file_path: PathBuf,
     /// The partition table found on the disk
     #[get = "pub"]
-    part_table: PartTable,
+    part_table: U,
     /// List of volumes found on the disk
     #[get = "pub"]
-    volumes: Vec<Volume>,
+    volumes: Vec<T>,
     /// The size in bytes of a sector
     #[get = "pub"]
     sector_size: usize,
 }
 
-impl Disk {
+impl Disk<FATVol, Mbr> {
     /// Opens a disk image file and analyzes its structure.
     ///
     /// # Parameters
@@ -82,7 +66,7 @@ impl Disk {
                     sector_size,
                 ) {
                     Ok(fat_vol) => {
-                        vol.push(Volume::FAT32(fat_vol));
+                        vol.push(fat_vol);
                     }
                     Err(error) => {
                         return Err(DiskError::ParsingError(format!(
@@ -95,7 +79,7 @@ impl Disk {
 
         let disk = Disk {
             file_path: path.to_path_buf(),
-            part_table: PartTable::Mbr(mbr),
+            part_table: mbr,
             volumes: vol,
             sector_size,
         };
@@ -116,19 +100,10 @@ impl Disk {
     /// - Partition table information
     /// - Volume information for each partition
     pub fn print_layout(&self, indent: u8) -> Result<(), std::fmt::Error> {
-        match &self.part_table {
-            PartTable::Mbr(mbr) => print!("{}", mbr.display_layout(indent)?),
-        }
+        print!("{}", self.part_table.display_layout(indent)?);
 
         for vol in self.volumes.iter() {
-            match vol {
-                Volume::FAT32(vol) => {
-                    print!("\n{}", vol.display_layout(indent + 3)?)
-                }
-                Volume::Unsupported => {
-                    print!("\nUnsupported Volume Type.\n")
-                }
-            }
+            print!("\n{}", vol.display_layout(indent + 3)?);
         }
 
         Ok(())
@@ -136,12 +111,7 @@ impl Disk {
 
     pub fn print_tree(&self) -> Result<(), TraitError> {
         for vol in self.volumes.iter() {
-            match vol {
-                Volume::FAT32(vol) => vol.display_tree()?,
-                Volume::Unsupported => {
-                    print!("\nUnsupported Volume Type.\n");
-                }
-            }
+            vol.display_tree()?;
         }
 
         Ok(())
