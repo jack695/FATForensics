@@ -2,5 +2,11 @@
 name = "fat_forensics"
 version = "0.1.0"
 edition = "2024"
+default-run = "main"
 
 [dependencies]
+binread = "2.2.0"
+thiserror = "2.0.12"
+getset = "0.1"
+log = "0.4.27"
+stderrlog = "0.6.0"
